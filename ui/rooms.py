@@ -7,6 +7,13 @@ from database.db import (
 )
 from ui.font_utils import get_font, get_font_bold, get_font_size
 
+# ui/rooms.py - At the top, update the imports
+from database.db import (
+    get_all_rooms, get_available_rooms, get_current_bookings,
+    add_room, delete_room, update_room_status,
+    check_in, check_out, get_room_stats, get_connection
+)
+
 class RoomsFrame(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -165,21 +172,124 @@ class RoomsFrame(ctk.CTkFrame):
             self.show_message(msg, "red")
     
     def do_check_out(self):
-        """Check out a guest"""
+        """Check out a guest and record revenue"""
         room = self.checkout_dropdown.get()
         
         if room == "No occupied rooms":
             self.show_message("No occupied rooms", "red")
             return
         
-        success, msg = check_out(room)
+        # Get room details first
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.price, b.customer_name, b.check_in
+            FROM rooms r
+            JOIN bookings b ON b.room_number = r.room_number
+            WHERE r.room_number = ? AND b.status = 'Checked In'
+        """, (room,))
+        result = cursor.fetchone()
+        conn.close()
         
-        if success:
-            self.refresh_ui()
-            self.show_message(msg, "green")
-        else:
-            self.show_message(msg, "red")
-    
+        if not result:
+            self.show_message("No active booking found", "red")
+            return
+        
+        price, customer, check_in = result
+        
+        # Show confirmation dialog with details
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Confirm Checkout")
+        dialog.geometry("400x280")
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.focus_force()
+        dialog.lift()
+        
+        dialog.update_idletasks()
+        width = 400
+        height = 280
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f'{width}x{height}+{x}+{y}')
+        
+        font_size = get_font_size()
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Checkout Room {room}?",
+            font=get_font_bold(18)
+        ).pack(pady=10)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Customer: {customer}",
+            font=get_font(font_size)
+        ).pack(pady=2)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Check-in: {check_in}",
+            font=get_font(font_size)
+        ).pack(pady=2)
+        
+        ctk.CTkLabel(
+            dialog,
+            text=f"Room Price: UGX {price:,.0f}",
+            font=get_font_bold(font_size + 2),
+            text_color="green"
+        ).pack(pady=5)
+        
+        ctk.CTkLabel(
+            dialog,
+            text="This will be added to today's revenue",
+            font=get_font(font_size - 2),
+            text_color="orange"
+        ).pack(pady=5)
+        
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=15)
+        
+        def confirm_checkout():
+            # Disable buttons and show processing
+            for widget in btn_frame.winfo_children():
+                widget.configure(state="disabled")
+            
+            # Show processing message
+            status_label = ctk.CTkLabel(
+                dialog,
+                text="⏳ Processing checkout...",
+                font=get_font_bold(font_size),
+                text_color="blue"
+            )
+            status_label.pack(pady=5)
+            dialog.update_idletasks()
+            
+            # Perform checkout
+            success, msg = check_out(room)
+            dialog.destroy()
+            
+            if success:
+                self.refresh_ui()
+                self.refresh_dashboard()
+                self.show_message(msg, "green")
+            else:
+                self.show_message(msg, "red")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="✅ Confirm Checkout",
+            command=confirm_checkout,
+            width=120
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=dialog.destroy,
+            width=120
+        ).pack(side="left", padx=10)
+
     def load_rooms(self):
         """Load all rooms"""
         for widget in self.rooms_list.winfo_children():

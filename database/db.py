@@ -12,14 +12,14 @@ RETRY_DELAY = 0.5  # seconds
 def get_connection():
     """Get database connection with timeout and WAL mode"""
     try:
-        conn = sqlite3.connect(DB_PATH, timeout=5)  # Reduced from 10 to 5 seconds
+        conn = sqlite3.connect(DB_PATH, timeout=5)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         return conn
     except sqlite3.OperationalError as e:
         if "database is locked" in str(e):
-            for i in range(2):  # Reduced retries
-                time.sleep(0.2)  # Reduced delay
+            for i in range(2):
+                time.sleep(0.2)
                 try:
                     conn = sqlite3.connect(DB_PATH, timeout=5)
                     conn.execute("PRAGMA journal_mode=WAL")
@@ -146,6 +146,24 @@ def initialize_database():
     ]
     for item in default_non_inventory:
         cursor.execute("INSERT OR IGNORE INTO non_inventory_items (name) VALUES (?)", (item,))
+    
+    # ================ INITIALIZE ROOMS ================
+    # Room data: (room_number, room_type, price)
+    default_rooms = [
+        ("Gorilla", "Standard", 40000),
+        ("Antelope", "Standard", 40000),
+        ("Lion", "Deluxe", 50000),
+        ("Elephant", "Deluxe", 50000),
+        ("Peacock", "Budget", 30000),
+        ("Zebra", "Budget", 30000),
+        ("Rhino", "Budget", 30000)
+    ]
+    
+    for room_number, room_type, price in default_rooms:
+        cursor.execute("""
+            INSERT OR IGNORE INTO rooms (room_number, room_type, price, status)
+            VALUES (?, ?, ?, 'Vacant')
+        """, (room_number, room_type, price))
     
     conn.commit()
     conn.close()
@@ -1092,26 +1110,72 @@ def check_in(room_number, customer_name, phone):
         conn.close()
         return False, str(e)
 
+# ========== UPDATED check_out FUNCTION - Records Room Revenue ==========
 def check_out(room_number):
-    """Check out a guest"""
+    """Check out a guest and record room revenue"""
     conn = get_connection()
     cursor = conn.cursor()
+    
     try:
+        # Get room price and booking details in one query
+        cursor.execute("""
+            SELECT r.price, b.customer_name, b.check_in
+            FROM rooms r
+            JOIN bookings b ON b.room_number = r.room_number
+            WHERE r.room_number = ? AND b.status = 'Checked In'
+        """, (room_number,))
+        result = cursor.fetchone()
+        
+        if not result:
+            conn.close()
+            return False, "No active booking found for this room"
+        
+        room_price, customer_name, check_in = result
+        
+        # Update room status and booking in one transaction
+        check_out_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Update room status
         cursor.execute("UPDATE rooms SET status = 'Vacant' WHERE room_number = ?", (room_number,))
         
+        # Update booking
         cursor.execute("""
             UPDATE bookings 
-            SET check_out = datetime('now'), status = 'Checked Out'
+            SET check_out = ?, status = 'Checked Out'
             WHERE room_number = ? AND status = 'Checked In'
-        """, (room_number,))
+        """, (check_out_time, room_number))
+        
+        # Record room revenue as a sale
+        item_name = f"Room: {room_number} - {customer_name}"
+        
+        cursor.execute("""
+            INSERT INTO sales (
+                item_name, quantity, cost_price, unit_price, 
+                total_revenue, total_cost, total_profit, 
+                sale_date, notes, payment_type
+            )
+            VALUES (?, 1, 0, ?, ?, 0, ?, datetime('now'), ?, 'Cash')
+        """, (item_name, room_price, room_price, room_price, 
+              f"Room checkout: {customer_name}, Check-in: {check_in}"))
+        
+        # Update daily balance
+        cursor.execute("""
+            UPDATE daily_balance 
+            SET daily_revenue = daily_revenue + ?, 
+                closing_balance = closing_balance + ?
+            WHERE date = ?
+        """, (room_price, room_price, today))
         
         conn.commit()
         conn.close()
-        return True, f"Room {room_number} checked out"
+        
+        return True, f"Room {room_number} checked out. Revenue: UGX {room_price:,.0f} recorded."
+        
     except Exception as e:
+        conn.rollback()
         conn.close()
         return False, str(e)
-
 def get_current_bookings():
     """Get current bookings"""
     conn = get_connection()
