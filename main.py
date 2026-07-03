@@ -2,7 +2,7 @@
 import customtkinter as ctk
 from PIL import Image, ImageDraw
 import os
-from database.db import initialize_database, initialize_system
+from database.db import initialize_database, initialize_system, sync_business_date
 from ui.dashboard import DashboardFrame
 from ui.expenses import ExpensesFrame
 from ui.inventory import InventoryFrame
@@ -19,6 +19,7 @@ ctk.set_default_color_theme("blue")
 # Initialize Database and System
 initialize_database()  # Creates all tables including daily_balance
 initialize_system()    # Now daily_balance exists, so this works!
+sync_business_date()    
 
 def create_circular_image(image_path, size=(150, 150)):
     """Create a circular image from a file"""

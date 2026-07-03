@@ -2,9 +2,10 @@
 import customtkinter as ctk
 from database.db import (
     get_room_stats, get_total_sales, get_total_expenses,
-    get_low_stock_items, get_connection, get_business_date
+    get_low_stock_items, get_connection, get_business_date,
+    get_weekly_start_date, get_weekly_expenses
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from ui.font_utils import get_font, get_font_bold, get_font_size
 
 class DashboardFrame(ctk.CTkFrame):
@@ -21,18 +22,10 @@ class DashboardFrame(ctk.CTkFrame):
         )
         title.pack(pady=(20, 10))
         
-        # Stats Grid - This is where stats will be displayed
+        # Stats Grid
         self.stats_frame = ctk.CTkFrame(self)
         self.stats_frame.pack(fill="x", padx=20, pady=10)
-        
-        # Refresh button
-        refresh_btn = ctk.CTkButton(
-            self,
-            text="🔄 Refresh",
-            command=self.refresh,
-            width=100
-        )
-        refresh_btn.pack(pady=5)
+        self.load_stats()
         
         # Quick Actions
         actions_frame = ctk.CTkFrame(self)
@@ -65,17 +58,10 @@ class DashboardFrame(ctk.CTkFrame):
         # Low Stock Alert
         self.low_stock_frame = ctk.CTkFrame(self)
         self.low_stock_frame.pack(fill="x", padx=20, pady=10)
-        
-        # Load data
-        self.load_data()
-    
-    def load_data(self):
-        """Load all dashboard data"""
-        self.load_stats()
         self.load_low_stock()
     
     def load_stats(self):
-        """Load statistics"""
+        """Load statistics - cumulative from start of week"""
         # Clear existing widgets
         for widget in self.stats_frame.winfo_children():
             widget.destroy()
@@ -83,59 +69,52 @@ class DashboardFrame(ctk.CTkFrame):
         font_size = get_font_size()
         business_date = get_business_date()
         
-        # Get today's date
-        today = datetime.now().strftime("%Y-%m-%d")
+        print(f"\n=== Dashboard Loading ===")
+        print(f"Business Date: {business_date}")
         
-        # Get room stats
-        occupied, total = get_room_stats()
+        # Get the start of the week (Sunday)
+        week_start = get_weekly_start_date(business_date)
+        week_end = business_date  # Today
+        print(f"Week Start: {week_start}, Week End: {week_end}")
         
-        # Get today's sales
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(total_revenue), SUM(total_profit), COUNT(*)
-                FROM sales
-                WHERE DATE(sale_date) = ?
-            """, (today,))
-            sales_data = cursor.fetchone()
-            conn.close()
-        except Exception as e:
-            print(f"Error getting sales: {e}")
-            sales_data = (0, 0, 0)
+        # Get TOTAL revenue for the week (cumulative from Sunday)
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(total_revenue), SUM(total_profit), COUNT(*)
+            FROM sales
+            WHERE DATE(sale_date) >= ? AND DATE(sale_date) <= ?
+        """, (week_start, week_end))
+        sales_data = cursor.fetchone()
+        conn.close()
         
-        today_revenue = sales_data[0] or 0
-        today_profit = sales_data[1] or 0
-        today_count = sales_data[2] or 0
+        week_revenue = sales_data[0] or 0
+        week_profit = sales_data[1] or 0
+        week_sales_count = sales_data[2] or 0
         
-        # Get today's expenses
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(amount), COUNT(*)
-                FROM expenses
-                WHERE DATE(expense_date) = ?
-            """, (today,))
-            expenses_data = cursor.fetchone()
-            conn.close()
-        except Exception as e:
-            print(f"Error getting expenses: {e}")
-            expenses_data = (0, 0)
+        print(f"Week Revenue: {week_revenue}, Week Profit: {week_profit}")
         
-        expenses_total = expenses_data[0] or 0
-        expenses_count = expenses_data[1] or 0
+        # Get WEEKLY expenses (cumulative from Sunday to today)
+        week_expenses, week_expenses_count = get_weekly_expenses(week_start, week_end)
+        
+        print(f"Week Expenses: {week_expenses}, Count: {week_expenses_count}")
         
         # Calculate net profit
-        net_profit = today_profit - expenses_total
+        net_profit = week_profit - week_expenses
         
-        # Create stats cards
+        occupied, total = get_room_stats()
+        
+        # Format week range
+        week_start_display = datetime.strptime(week_start, "%Y-%m-%d").strftime("%b %d")
+        week_end_display = datetime.strptime(week_end, "%Y-%m-%d").strftime("%b %d")
+        week_range = f"{week_start_display} - {week_end_display}"
+        
         stats = [
             ("🛏️ Rooms", f"{occupied}/{total}", f"{occupied/total*100:.1f}% Occupied" if total > 0 else "0%"),
-            ("💰 Today's Revenue", f"UGX {today_revenue:,.0f}", f"{today_count} transactions"),
-            ("📈 Today's Profit", f"UGX {today_profit:,.0f}", "Profit from sales today"),
-            ("💸 Today's Expenses", f"UGX {expenses_total:,.0f}", f"{expenses_count} entries"),
-            ("📊 Net Profit", f"UGX {net_profit:,.0f}", "Today's Profit - Today's Expenses")
+            ("💰 Week Revenue", f"UGX {week_revenue:,.0f}", f"Week of {week_range}"),
+            ("📈 Week Profit", f"UGX {week_profit:,.0f}", f"{week_sales_count} sales this week"),
+            ("💸 Week Expenses", f"UGX {week_expenses:,.0f}", f"{week_expenses_count} expenses this week"),
+            ("📊 Net Profit", f"UGX {net_profit:,.0f}", "Week Profit - Week Expenses")
         ]
         
         for title, value, sub in stats:
@@ -145,6 +124,8 @@ class DashboardFrame(ctk.CTkFrame):
             ctk.CTkLabel(card, text=title, font=get_font(font_size)).pack(pady=2)
             ctk.CTkLabel(card, text=value, font=get_font_bold(font_size + 2)).pack(pady=2)
             ctk.CTkLabel(card, text=sub, font=get_font(font_size - 2), text_color="gray").pack(pady=2)
+        
+        print("=== Dashboard Load Complete ===\n")
     
     def load_low_stock(self):
         """Load low stock alerts"""
@@ -179,7 +160,8 @@ class DashboardFrame(ctk.CTkFrame):
     
     def refresh(self):
         """Manually refresh the dashboard"""
-        self.load_data()
+        self.load_stats()
+        self.load_low_stock()
     
     def show_rooms(self):
         self.master.master.show_rooms()

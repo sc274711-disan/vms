@@ -775,6 +775,22 @@ def delete_expense(expense_id):
     except Exception as e:
         conn.close()
         return False, str(e)
+    
+def get_weekly_expenses(start_date, end_date=None):
+    """Get total expenses for a week period"""
+    if end_date is None:
+        end_date = datetime.now().strftime("%Y-%m-%d")
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT SUM(amount), COUNT(*)
+        FROM expenses
+        WHERE DATE(expense_date) >= ? AND DATE(expense_date) <= ?
+    """, (start_date, end_date))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] or 0, result[1] or 0
 
 def get_total_expenses(date=None):
     """Get total expenses for a date"""
@@ -1258,5 +1274,30 @@ def get_weekly_report_data(date_str):
     """Get weekly report data with balances"""
     return get_weekly_report(date_str)
 
+
+def sync_business_date():
+    """Sync business date with current date"""
+    from datetime import datetime, timedelta
+    
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    business_date = get_business_date()
+    
+    print(f"Current date: {current_date}, Business date: {business_date}")
+    
+    if business_date < current_date:
+        # Perform night audit for each day between business_date and current_date
+        current = datetime.strptime(business_date, "%Y-%m-%d")
+        end = datetime.strptime(current_date, "%Y-%m-%d")
+        
+        day_count = 0
+        while current < end:
+            current += timedelta(days=1)
+            perform_night_audit()
+            day_count += 1
+            print(f"Night audit performed for day {day_count}")
+        
+        set_business_date(current_date)
+        return True, f"Business date synced to {current_date}. {day_count} night audits performed."
+    return False, "Business date is up to date"
 # Run initialization when module is imported
 # initialize_system()  # Called from main.py
