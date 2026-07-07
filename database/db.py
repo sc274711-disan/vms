@@ -82,6 +82,157 @@ def initialize_database():
     """)
     
     # Sales
+
+    # ================ CASH AT HAND FUNCTIONS ================
+
+    # ================ MERCHANT FUNCTIONS ================
+
+def get_merchant_sales(date=None):
+    """Get total merchant sales and count"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if date:
+        cursor.execute("""
+            SELECT SUM(total_revenue), COUNT(*)
+            FROM sales
+            WHERE DATE(sale_date) = ? AND payment_type = 'Merchant'
+        """, (date,))
+    else:
+        cursor.execute("""
+            SELECT SUM(total_revenue), COUNT(*)
+            FROM sales
+            WHERE payment_type = 'Merchant'
+        """)
+    
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] or 0, result[1] or 0
+
+def get_merchant_balance(date=None):
+    """Get merchant balance (total merchant revenue)"""
+    merchant_revenue, merchant_count = get_merchant_sales(date)
+    
+    return {
+        "merchant_balance": merchant_revenue,
+        "merchant_revenue": merchant_revenue,
+        "merchant_count": merchant_count
+    }
+
+def get_merchant_balance_week(start_date, end_date):
+    """Get merchant balance for a week period"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT SUM(total_revenue), COUNT(*)
+        FROM sales
+        WHERE DATE(sale_date) >= ? AND DATE(sale_date) <= ?
+        AND payment_type = 'Merchant'
+    """, (start_date, end_date))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    merchant_revenue = result[0] or 0
+    merchant_count = result[1] or 0
+    
+    return {
+        "merchant_balance": merchant_revenue,
+        "merchant_revenue": merchant_revenue,
+        "merchant_count": merchant_count
+    }
+
+def get_cash_sales(date=None):
+    """Get total cash sales and count"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if date:
+        cursor.execute("""
+            SELECT SUM(total_revenue), COUNT(*)
+            FROM sales
+            WHERE DATE(sale_date) = ? AND payment_type = 'Cash'
+        """, (date,))
+    else:
+        cursor.execute("""
+            SELECT SUM(total_revenue), COUNT(*)
+            FROM sales
+            WHERE payment_type = 'Cash'
+        """)
+    
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] or 0, result[1] or 0
+
+def get_cash_expenses(date=None):
+    """Get total cash expenses (all expenses are considered cash for now)"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if date:
+        cursor.execute("""
+            SELECT SUM(amount), COUNT(*)
+            FROM expenses
+            WHERE DATE(expense_date) = ?
+        """, (date,))
+    else:
+        cursor.execute("""
+            SELECT SUM(amount), COUNT(*)
+            FROM expenses
+        """)
+    
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] or 0, result[1] or 0
+
+def get_cash_at_hand(date=None):
+    """Get cash at hand (Cash Revenue - Cash Expenses)"""
+    cash_revenue, cash_count = get_cash_sales(date)
+    cash_expenses, exp_count = get_cash_expenses(date)
+    
+    return {
+        "cash_balance": cash_revenue - cash_expenses,
+        "cash_revenue": cash_revenue,
+        "cash_expenses": cash_expenses,
+        "cash_count": cash_count,
+        "exp_count": exp_count
+    }
+
+def get_cash_at_hand_week(start_date, end_date):
+    """Get cash at hand for a week period"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Cash sales for the week
+    cursor.execute("""
+        SELECT SUM(total_revenue), COUNT(*)
+        FROM sales
+        WHERE DATE(sale_date) >= ? AND DATE(sale_date) <= ?
+        AND payment_type = 'Cash'
+    """, (start_date, end_date))
+    cash_sales = cursor.fetchone()
+    
+    # Cash expenses for the week
+    cursor.execute("""
+        SELECT SUM(amount), COUNT(*)
+        FROM expenses
+        WHERE DATE(expense_date) >= ? AND DATE(expense_date) <= ?
+    """, (start_date, end_date))
+    cash_expenses = cursor.fetchone()
+    
+    conn.close()
+    
+    cash_revenue = cash_sales[0] or 0
+    cash_exp = cash_expenses[0] or 0
+    
+    return {
+        "cash_balance": cash_revenue - cash_exp,
+        "cash_revenue": cash_revenue,
+        "cash_expenses": cash_exp,
+        "cash_count": cash_sales[1] or 0,
+        "exp_count": cash_expenses[1] or 0
+    }
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

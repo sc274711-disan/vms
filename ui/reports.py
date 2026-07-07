@@ -3,7 +3,8 @@ import customtkinter as ctk
 from database.db import (
     get_daily_report, get_weekly_report, get_weekly_report_data,
     get_daily_balance, get_sales_by_payment_type, get_connection,
-    get_business_date, get_weekly_start_date
+    get_business_date, get_weekly_start_date, get_recent_expenses,
+    get_all_expenses, get_item_type
 )
 from datetime import datetime, timedelta
 import csv
@@ -46,9 +47,56 @@ class ReportsFrame(ctk.CTkFrame):
         )
         title.pack(pady=(20, 10))
         
+        # Date Selection Frame
+        date_frame = ctk.CTkFrame(self)
+        date_frame.pack(fill="x", padx=20, pady=5)
+        
+        ctk.CTkLabel(date_frame, text="Select Date:", font=get_font(self.font_size)).pack(side="left", padx=5)
+        
+        # Date entry with calendar button
+        self.date_entry = ctk.CTkEntry(date_frame, placeholder_text="YYYY-MM-DD", width=150)
+        self.date_entry.pack(side="left", padx=5)
+        self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        
+        ctk.CTkButton(
+            date_frame,
+            text="📅",
+            width=35,
+            command=self.open_calendar
+        ).pack(side="left", padx=2)
+        
+        ctk.CTkButton(
+            date_frame,
+            text="📊 Generate Report",
+            command=self.generate_report_for_date,
+            width=150,
+            fg_color="#1f538d"
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            date_frame,
+            text="📅 Today",
+            command=self.go_to_today,
+            width=80
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            date_frame,
+            text="◀ Yesterday",
+            command=self.go_to_yesterday,
+            width=100
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            date_frame,
+            text="Tomorrow ▶",
+            command=self.go_to_tomorrow,
+            width=100
+        ).pack(side="left", padx=5)
+        
         # Buttons
         btn_frame = ctk.CTkFrame(self)
-        btn_frame.pack(fill="x", padx=20, pady=10)
+        btn_frame.pack(fill="x", padx=20, pady=5)
         
         ctk.CTkButton(
             btn_frame,
@@ -115,18 +163,178 @@ class ReportsFrame(ctk.CTkFrame):
         # Show daily report by default
         self.show_daily_report()
     
-    def clear_report(self):
-        """Clear the report frame"""
-        for widget in self.report_frame.winfo_children():
-            widget.destroy()
+    def open_calendar(self):
+        """Open a calendar popup to select a date"""
+        font_size = get_font_size()
+        
+        # Create popup window
+        calendar_window = ctk.CTkToplevel(self)
+        calendar_window.title("Select Date")
+        calendar_window.geometry("300x280")
+        calendar_window.transient(self)
+        calendar_window.grab_set()
+        calendar_window.focus_force()
+        calendar_window.lift()
+        
+        # Center the window
+        calendar_window.update_idletasks()
+        width = 300
+        height = 280
+        x = (calendar_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (calendar_window.winfo_screenheight() // 2) - (height // 2)
+        calendar_window.geometry(f'{width}x{height}+{x}+{y}')
+        
+        # Get current date from entry
+        current_date_str = self.date_entry.get().strip()
+        try:
+            current_date = datetime.strptime(current_date_str, "%Y-%m-%d")
+        except:
+            current_date = datetime.now()
+        
+        # Try to use tkcalendar
+        try:
+            from tkcalendar import Calendar
+            
+            ctk.CTkLabel(
+                calendar_window,
+                text="Select a Date",
+                font=get_font_bold(font_size + 2)
+            ).pack(pady=10)
+            
+            # Create calendar widget
+            cal = Calendar(
+                calendar_window,
+                selectmode='day',
+                year=current_date.year,
+                month=current_date.month,
+                day=current_date.day,
+                date_pattern='yyyy-mm-dd',
+                background='#2b2b2b',
+                foreground='white',
+                selectbackground='#1f538d',
+                selectforeground='white',
+                weekendbackground='#3a3a3a',
+                weekendforeground='gray',
+                headersbackground='#1a1a1a',
+                headersforeground='white'
+            )
+            cal.pack(pady=10, padx=10)
+            
+            def select_date():
+                selected_date = cal.get_date()
+                self.date_entry.delete(0, "end")
+                self.date_entry.insert(0, selected_date)
+                calendar_window.destroy()
+                # Auto-generate report
+                self.generate_report_for_date()
+            
+            btn_frame = ctk.CTkFrame(calendar_window)
+            btn_frame.pack(pady=10)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="✅ Select",
+                command=select_date,
+                width=100
+            ).pack(side="left", padx=5)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="Cancel",
+                command=calendar_window.destroy,
+                width=100
+            ).pack(side="left", padx=5)
+        except ImportError:
+            # Fallback if tkcalendar not available
+            ctk.CTkLabel(
+                calendar_window,
+                text="Please enter date manually:",
+                font=get_font(font_size)
+            ).pack(pady=10)
+            
+            entry = ctk.CTkEntry(calendar_window, placeholder_text="YYYY-MM-DD", width=200)
+            entry.pack(pady=10)
+            entry.insert(0, current_date.strftime("%Y-%m-%d"))
+            
+            def select_date():
+                date_str = entry.get().strip()
+                try:
+                    datetime.strptime(date_str, "%Y-%m-%d")
+                    self.date_entry.delete(0, "end")
+                    self.date_entry.insert(0, date_str)
+                    calendar_window.destroy()
+                    self.generate_report_for_date()
+                except ValueError:
+                    error_label = ctk.CTkLabel(
+                        calendar_window,
+                        text="Invalid date format! Use YYYY-MM-DD",
+                        text_color="red"
+                    )
+                    error_label.pack(pady=5)
+            
+            btn_frame = ctk.CTkFrame(calendar_window)
+            btn_frame.pack(pady=10)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="✅ Select",
+                command=select_date,
+                width=100
+            ).pack(side="left", padx=5)
+            
+            ctk.CTkButton(
+                btn_frame,
+                text="Cancel",
+                command=calendar_window.destroy,
+                width=100
+            ).pack(side="left", padx=5)
     
-    def show_daily_report(self):
-        """Show daily report with profit and payment breakdown"""
+    def go_to_today(self):
+        """Go to today's date"""
+        self.date_entry.delete(0, "end")
+        self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        self.generate_report_for_date()
+    
+    def go_to_yesterday(self):
+        """Go to yesterday's date"""
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        self.date_entry.delete(0, "end")
+        self.date_entry.insert(0, yesterday)
+        self.generate_report_for_date()
+    
+    def go_to_tomorrow(self):
+        """Go to tomorrow's date"""
+        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        self.date_entry.delete(0, "end")
+        self.date_entry.insert(0, tomorrow)
+        self.generate_report_for_date()
+    
+    def generate_report_for_date(self):
+        """Generate report for the selected date"""
+        date_str = self.date_entry.get().strip()
+        try:
+            # Validate date format
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d")
+            
+            # Check if date is in the future
+            if selected_date > datetime.now():
+                self.show_message("⚠️ Cannot generate report for future dates", "orange")
+                return
+            
+            # Show daily report for selected date
+            self.show_daily_report_for_date(date_str)
+        except ValueError:
+            self.show_message("❌ Invalid date format. Use YYYY-MM-DD", "red")
+    
+    def show_daily_report_for_date(self, date_str):
+        """Show daily report for a specific date"""
         self.clear_report()
         
         font_size = get_font_size()
-        date = datetime.now().strftime("%Y-%m-%d")
-        report = get_daily_report(date)
+        report = get_daily_report(date_str)
+        expenses = self.get_expenses_for_period(date_str, date_str)
+        expense_summary = self.get_expenses_summary(date_str, date_str)
+        sales_summary = self.get_sales_summary_with_types(date_str, date_str)
         
         # Title
         ctk.CTkLabel(
@@ -138,7 +346,7 @@ class ReportsFrame(ctk.CTkFrame):
         
         ctk.CTkLabel(
             self.report_frame,
-            text=f"📊 Daily Report - {date}",
+            text=f"📊 Daily Report - {date_str}",
             font=get_font_bold(20)
         ).pack(pady=5)
         
@@ -216,40 +424,138 @@ class ReportsFrame(ctk.CTkFrame):
             ctk.CTkLabel(row, text=label, font=get_font(font_size), width=200).pack(side="left", padx=20)
             ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
         
-        # Sales Summary
+        # Sales Summary with Type Breakdown
         sales_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
         sales_frame.pack(fill="x", pady=5)
         
         ctk.CTkLabel(sales_frame, text="SALES SUMMARY", font=get_font_bold(font_size + 2)).pack(pady=5)
         
-        sales_stats = [
-            ("Total Revenue", f"UGX {report['sales_revenue']:,.0f}"),
-            ("Cost of Goods", f"UGX {report['sales_cost']:,.0f}"),
-            ("Gross Profit", f"UGX {report['sales_profit']:,.0f}"),
-            ("Transactions", str(report['sales_count']))
-        ]
+        # Overall totals
+        total_row = ctk.CTkFrame(sales_frame)
+        total_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(total_row, text="Total Sales", font=get_font_bold(font_size), width=200).pack(side="left", padx=20)
+        ctk.CTkLabel(total_row, text=f"UGX {sales_summary['total']['revenue']:,.0f} ({sales_summary['total']['count']} transactions)", font=get_font_bold(font_size)).pack(side="right", padx=20)
         
-        for label, value in sales_stats:
-            row = ctk.CTkFrame(sales_frame)
-            row.pack(fill="x", pady=2)
-            ctk.CTkLabel(row, text=label, font=get_font(font_size), width=200).pack(side="left", padx=20)
-            ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
+        # Inventory Sales
+        inv_row = ctk.CTkFrame(sales_frame)
+        inv_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(inv_row, text="📦 Inventory Sales", font=get_font(font_size), width=200).pack(side="left", padx=20)
+        ctk.CTkLabel(inv_row, text=f"UGX {sales_summary['inventory']['revenue']:,.0f} ({sales_summary['inventory']['count']} items)", font=get_font(font_size)).pack(side="right", padx=20)
         
-        # Expenses
+        # Non-Inventory Sales
+        non_inv_row = ctk.CTkFrame(sales_frame)
+        non_inv_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(non_inv_row, text="🍽️ Non-Inventory Sales", font=get_font(font_size), width=200).pack(side="left", padx=20)
+        ctk.CTkLabel(non_inv_row, text=f"UGX {sales_summary['non_inventory']['revenue']:,.0f} ({sales_summary['non_inventory']['count']} items)", font=get_font(font_size)).pack(side="right", padx=20)
+        
+        # Room Sales
+        room_row = ctk.CTkFrame(sales_frame)
+        room_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(room_row, text="🛏️ Room Sales", font=get_font(font_size), width=200).pack(side="left", padx=20)
+        ctk.CTkLabel(room_row, text=f"UGX {sales_summary['room']['revenue']:,.0f} ({sales_summary['room']['count']} bookings)", font=get_font(font_size)).pack(side="right", padx=20)
+        
+        # Sales Details
+        if sales_summary['details']['inventory'] or sales_summary['details']['non_inventory'] or sales_summary['details']['room']:
+            detail_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
+            detail_frame.pack(fill="x", pady=5)
+            
+            ctk.CTkLabel(detail_frame, text="SALES DETAILS", font=get_font_bold(font_size + 2)).pack(pady=5)
+            
+            # Inventory Sales
+            if sales_summary['details']['inventory']:
+                ctk.CTkLabel(detail_frame, text="📦 Inventory Items Sold", font=get_font_bold(font_size)).pack(anchor="w", padx=20, pady=2)
+                for sale in sales_summary['details']['inventory'][:10]:
+                    row = ctk.CTkFrame(detail_frame)
+                    row.pack(fill="x", pady=1)
+                    ctk.CTkLabel(row, text=f"{sale[1]} x{sale[2]}", font=get_font(font_size - 1), width=200).pack(side="left", padx=20)
+                    ctk.CTkLabel(row, text=f"UGX {sale[4]:,.0f}", font=get_font(font_size - 1)).pack(side="right", padx=20)
+            
+            # Non-Inventory Sales
+            if sales_summary['details']['non_inventory']:
+                ctk.CTkLabel(detail_frame, text="🍽️ Non-Inventory Items Sold", font=get_font_bold(font_size)).pack(anchor="w", padx=20, pady=2)
+                for sale in sales_summary['details']['non_inventory'][:10]:
+                    row = ctk.CTkFrame(detail_frame)
+                    row.pack(fill="x", pady=1)
+                    ctk.CTkLabel(row, text=f"{sale[1]} x{sale[2]}", font=get_font(font_size - 1), width=200).pack(side="left", padx=20)
+                    ctk.CTkLabel(row, text=f"UGX {sale[4]:,.0f}", font=get_font(font_size - 1)).pack(side="right", padx=20)
+            
+            # Room Sales
+            if sales_summary['details']['room']:
+                ctk.CTkLabel(detail_frame, text="🛏️ Room Bookings Checked Out", font=get_font_bold(font_size)).pack(anchor="w", padx=20, pady=2)
+                for sale in sales_summary['details']['room'][:10]:
+                    row = ctk.CTkFrame(detail_frame)
+                    row.pack(fill="x", pady=1)
+                    ctk.CTkLabel(row, text=f"{sale[1]}", font=get_font(font_size - 1), width=200).pack(side="left", padx=20)
+                    ctk.CTkLabel(row, text=f"UGX {sale[4]:,.0f}", font=get_font(font_size - 1)).pack(side="right", padx=20)
+        
+        # Expenses Section - Detailed
         expenses_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
         expenses_frame.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(expenses_frame, text="EXPENSES", font=get_font_bold(font_size + 2)).pack(pady=5)
+        ctk.CTkLabel(expenses_frame, text="EXPENSES DETAIL", font=get_font_bold(font_size + 2)).pack(pady=5)
         
-        exp_row = ctk.CTkFrame(expenses_frame)
-        exp_row.pack(fill="x", pady=2)
-        ctk.CTkLabel(exp_row, text="Total Expenses", font=get_font(font_size), width=200).pack(side="left", padx=20)
-        ctk.CTkLabel(exp_row, text=f"UGX {report['expenses']:,.0f}", font=get_font_bold(font_size)).pack(side="right", padx=20)
+        # Summary row
+        summary_row = ctk.CTkFrame(expenses_frame)
+        summary_row.pack(fill="x", pady=5)
         
-        exp_row2 = ctk.CTkFrame(expenses_frame)
-        exp_row2.pack(fill="x", pady=2)
-        ctk.CTkLabel(exp_row2, text="Expense Count", font=get_font(font_size), width=200).pack(side="left", padx=20)
-        ctk.CTkLabel(exp_row2, text=str(report['expenses_count']), font=get_font_bold(font_size)).pack(side="right", padx=20)
+        ctk.CTkLabel(
+            summary_row,
+            text=f"Total: UGX {expense_summary['total']:,.0f} | Count: {expense_summary['count']} | Avg: UGX {expense_summary['average']:,.0f} | Min: UGX {expense_summary['min']:,.0f} | Max: UGX {expense_summary['max']:,.0f}",
+            font=get_font(font_size)
+        ).pack(pady=5)
+        
+        if expenses:
+            # Header
+            header = ctk.CTkFrame(expenses_frame)
+            header.pack(fill="x", pady=2)
+            
+            headers = ["#", "Name", "Amount", "Time"]
+            widths = [30, 250, 120, 150]
+            
+            for h, w in zip(headers, widths):
+                ctk.CTkLabel(
+                    header,
+                    text=h,
+                    font=get_font_bold(font_size),
+                    width=w
+                ).pack(side="left", padx=5)
+            
+            for idx, expense in enumerate(expenses[:20], 1):
+                exp_id, name, amount, date_str, notes = expense
+                
+                row = ctk.CTkFrame(expenses_frame)
+                row.pack(fill="x", pady=1)
+                
+                data = [
+                    str(idx),
+                    name,
+                    f"UGX {amount:,.0f}",
+                    date_str[:16] if date_str else ""
+                ]
+                
+                for i, d in enumerate(data):
+                    ctk.CTkLabel(
+                        row,
+                        text=d,
+                        width=widths[i],
+                        anchor="w" if i > 0 else "center",
+                        font=get_font(font_size)
+                    ).pack(side="left", padx=5)
+            
+            if len(expenses) > 20:
+                ctk.CTkLabel(
+                    expenses_frame,
+                    text=f"... and {len(expenses) - 20} more expenses",
+                    font=get_font(font_size - 2),
+                    text_color="gray"
+                ).pack(pady=2)
+        else:
+            ctk.CTkLabel(
+                expenses_frame,
+                text="No expenses recorded on this day",
+                font=get_font(font_size),
+                text_color="gray"
+            ).pack(pady=5)
         
         # Net Profit
         profit_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a3a1a" if report['net_profit'] >= 0 else "#3a1a1a")
@@ -286,7 +592,184 @@ class ReportsFrame(ctk.CTkFrame):
         
         # Store for export
         self.current_report = report
+        self.current_expenses = expenses
+        self.current_expense_summary = expense_summary
+        self.current_sales_summary = sales_summary
+        self.current_report_date = date_str
         self.report_type = "daily"
+    
+    def show_daily_report(self):
+        """Show daily report for today"""
+        today = datetime.now().strftime("%Y-%m-%d")
+        self.date_entry.delete(0, "end")
+        self.date_entry.insert(0, today)
+        self.show_daily_report_for_date(today)
+    
+    def clear_report(self):
+        """Clear the report frame"""
+        for widget in self.report_frame.winfo_children():
+            widget.destroy()
+    
+    def get_sales_with_types(self, start_date=None, end_date=None):
+        """Get sales with inventory/non-inventory classification"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        if start_date and end_date:
+            cursor.execute("""
+                SELECT id, item_name, quantity, unit_price, total_revenue, 
+                       total_cost, total_profit, sale_date, notes, payment_type
+                FROM sales
+                WHERE DATE(sale_date) >= ? AND DATE(sale_date) <= ?
+                ORDER BY sale_date DESC
+            """, (start_date, end_date))
+        elif start_date:
+            cursor.execute("""
+                SELECT id, item_name, quantity, unit_price, total_revenue, 
+                       total_cost, total_profit, sale_date, notes, payment_type
+                FROM sales
+                WHERE DATE(sale_date) >= ?
+                ORDER BY sale_date DESC
+            """, (start_date,))
+        else:
+            cursor.execute("""
+                SELECT id, item_name, quantity, unit_price, total_revenue, 
+                       total_cost, total_profit, sale_date, notes, payment_type
+                FROM sales
+                ORDER BY sale_date DESC
+            """)
+        
+        sales = cursor.fetchall()
+        conn.close()
+        
+        # Classify each sale
+        inventory_sales = []
+        non_inventory_sales = []
+        room_sales = []
+        
+        for sale in sales:
+            item_name = sale[1]
+            # Check if it's a room sale
+            if item_name.startswith("Room:"):
+                room_sales.append(sale)
+            elif get_item_type(item_name) == "inventory":
+                inventory_sales.append(sale)
+            else:
+                non_inventory_sales.append(sale)
+        
+        return {
+            "all_sales": sales,
+            "inventory": inventory_sales,
+            "non_inventory": non_inventory_sales,
+            "room": room_sales
+        }
+    
+    def get_sales_summary_with_types(self, start_date=None, end_date=None):
+        """Get sales summary broken down by type"""
+        sales_data = self.get_sales_with_types(start_date, end_date)
+        
+        def calc_summary(sales_list):
+            if not sales_list:
+                return {"count": 0, "revenue": 0, "profit": 0, "cost": 0}
+            
+            count = len(sales_list)
+            revenue = sum(s[4] for s in sales_list)  # total_revenue
+            profit = sum(s[6] for s in sales_list)   # total_profit
+            cost = sum(s[5] for s in sales_list)     # total_cost
+            return {"count": count, "revenue": revenue, "profit": profit, "cost": cost}
+        
+        return {
+            "total": calc_summary(sales_data["all_sales"]),
+            "inventory": calc_summary(sales_data["inventory"]),
+            "non_inventory": calc_summary(sales_data["non_inventory"]),
+            "room": calc_summary(sales_data["room"]),
+            "details": {
+                "inventory": sales_data["inventory"],
+                "non_inventory": sales_data["non_inventory"],
+                "room": sales_data["room"]
+            }
+        }
+    
+    def get_expenses_for_period(self, start_date=None, end_date=None):
+        """Get expenses for a specific period with details"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        if start_date and end_date:
+            cursor.execute("""
+                SELECT id, name, amount, expense_date, notes
+                FROM expenses
+                WHERE DATE(expense_date) >= ? AND DATE(expense_date) <= ?
+                ORDER BY expense_date DESC
+            """, (start_date, end_date))
+        elif start_date:
+            cursor.execute("""
+                SELECT id, name, amount, expense_date, notes
+                FROM expenses
+                WHERE DATE(expense_date) >= ?
+                ORDER BY expense_date DESC
+            """, (start_date,))
+        else:
+            cursor.execute("""
+                SELECT id, name, amount, expense_date, notes
+                FROM expenses
+                ORDER BY expense_date DESC
+            """)
+        
+        expenses = cursor.fetchall()
+        conn.close()
+        return expenses
+    
+    def get_expenses_summary(self, start_date=None, end_date=None):
+        """Get expense summary for a period"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        if start_date and end_date:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as count,
+                    SUM(amount) as total,
+                    AVG(amount) as average,
+                    MIN(amount) as min_amount,
+                    MAX(amount) as max_amount
+                FROM expenses
+                WHERE DATE(expense_date) >= ? AND DATE(expense_date) <= ?
+            """, (start_date, end_date))
+        elif start_date:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as count,
+                    SUM(amount) as total,
+                    AVG(amount) as average,
+                    MIN(amount) as min_amount,
+                    MAX(amount) as max_amount
+                FROM expenses
+                WHERE DATE(expense_date) >= ?
+            """, (start_date,))
+        else:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as count,
+                    SUM(amount) as total,
+                    AVG(amount) as average,
+                    MIN(amount) as min_amount,
+                    MAX(amount) as max_amount
+                FROM expenses
+            """)
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return {
+                "count": result[0] or 0,
+                "total": result[1] or 0,
+                "average": result[2] or 0,
+                "min": result[3] or 0,
+                "max": result[4] or 0
+            }
+        return {"count": 0, "total": 0, "average": 0, "min": 0, "max": 0}
     
     def show_weekly_report(self):
         """Show weekly report with profit - Enhanced with more details"""
@@ -300,6 +783,15 @@ class ReportsFrame(ctk.CTkFrame):
         
         # Get business date
         business_date = get_business_date()
+        week_start = get_weekly_start_date(business_date)
+        week_end = business_date
+        
+        # Get detailed expenses for the week
+        week_expenses_detail = self.get_expenses_for_period(week_start, week_end)
+        week_expense_summary = self.get_expenses_summary(week_start, week_end)
+        
+        # Get sales summary with types for the week
+        week_sales_summary = self.get_sales_summary_with_types(week_start, week_end)
         
         # Title
         ctk.CTkLabel(
@@ -315,8 +807,6 @@ class ReportsFrame(ctk.CTkFrame):
             font=get_font_bold(20)
         ).pack(pady=5)
         
-        week_start = get_weekly_start_date(business_date)
-        week_end = business_date
         week_start_display = datetime.strptime(week_start, "%Y-%m-%d").strftime("%b %d, %Y")
         week_end_display = datetime.strptime(week_end, "%Y-%m-%d").strftime("%b %d, %Y")
         
@@ -397,6 +887,25 @@ class ReportsFrame(ctk.CTkFrame):
             row.pack(fill="x", pady=2)
             ctk.CTkLabel(row, text=label, font=get_font(font_size), width=200).pack(side="left", padx=20)
             ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
+        
+        # Sales Type Breakdown for the Week
+        sales_type_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
+        sales_type_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(sales_type_frame, text="SALES BY TYPE", font=get_font_bold(font_size + 2)).pack(pady=5)
+        
+        type_stats = [
+            ("📦 Inventory", f"UGX {week_sales_summary['inventory']['revenue']:,.0f}", f"{week_sales_summary['inventory']['count']} items"),
+            ("🍽️ Non-Inventory", f"UGX {week_sales_summary['non_inventory']['revenue']:,.0f}", f"{week_sales_summary['non_inventory']['count']} items"),
+            ("🛏️ Rooms", f"UGX {week_sales_summary['room']['revenue']:,.0f}", f"{week_sales_summary['room']['count']} bookings")
+        ]
+        
+        for label, value, sub in type_stats:
+            row = ctk.CTkFrame(sales_type_frame)
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=label, font=get_font(font_size), width=180).pack(side="left", padx=20)
+            ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
+            ctk.CTkLabel(row, text=sub, font=get_font(font_size - 2), text_color="gray").pack(side="right", padx=5)
         
         # Daily Breakdown
         ctk.CTkLabel(
@@ -485,6 +994,80 @@ class ReportsFrame(ctk.CTkFrame):
             text_color="green" if total_net_profit >= 0 else "red"
         ).pack(side="left", padx=20)
         
+        # Weekly Expenses Detail
+        expense_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
+        expense_frame.pack(fill="x", pady=10)
+        
+        ctk.CTkLabel(
+            expense_frame,
+            text="📝 WEEKLY EXPENSES DETAIL",
+            font=get_font_bold(font_size + 2)
+        ).pack(pady=5)
+        
+        # Expense summary
+        exp_summary_row = ctk.CTkFrame(expense_frame)
+        exp_summary_row.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(
+            exp_summary_row,
+            text=f"Total: UGX {week_expense_summary['total']:,.0f} | Count: {week_expense_summary['count']} | Avg: UGX {week_expense_summary['average']:,.0f}",
+            font=get_font(font_size)
+        ).pack(pady=2)
+        
+        if week_expenses_detail:
+            # Header
+            exp_header = ctk.CTkFrame(expense_frame)
+            exp_header.pack(fill="x", pady=2)
+            
+            exp_headers = ["#", "Name", "Amount", "Date", "Notes"]
+            exp_widths = [30, 180, 120, 120, 150]
+            
+            for h, w in zip(exp_headers, exp_widths):
+                ctk.CTkLabel(
+                    exp_header,
+                    text=h,
+                    font=get_font_bold(font_size),
+                    width=w
+                ).pack(side="left", padx=5)
+            
+            for idx, expense in enumerate(week_expenses_detail[:15], 1):
+                exp_id, name, amount, date_str, notes = expense
+                
+                row = ctk.CTkFrame(expense_frame)
+                row.pack(fill="x", pady=1)
+                
+                data = [
+                    str(idx),
+                    name,
+                    f"UGX {amount:,.0f}",
+                    date_str[:10] if date_str else "",
+                    notes[:20] + "..." if notes and len(notes) > 20 else notes or ""
+                ]
+                
+                for i, d in enumerate(data):
+                    ctk.CTkLabel(
+                        row,
+                        text=d,
+                        width=exp_widths[i],
+                        anchor="w" if i > 0 else "center",
+                        font=get_font(font_size - 1)
+                    ).pack(side="left", padx=5)
+            
+            if len(week_expenses_detail) > 15:
+                ctk.CTkLabel(
+                    expense_frame,
+                    text=f"... and {len(week_expenses_detail) - 15} more expenses",
+                    font=get_font(font_size - 2),
+                    text_color="gray"
+                ).pack(pady=2)
+        else:
+            ctk.CTkLabel(
+                expense_frame,
+                text="No expenses recorded this week",
+                font=get_font(font_size),
+                text_color="gray"
+            ).pack(pady=5)
+        
         # Store for export
         self.current_report = {
             "date": "Weekly",
@@ -495,7 +1078,10 @@ class ReportsFrame(ctk.CTkFrame):
             "gross_profit": total_gross_profit,
             "expenses": total_expenses,
             "net_profit": total_net_profit,
-            "weekly_data": weekly_data
+            "weekly_data": weekly_data,
+            "expenses_detail": week_expenses_detail,
+            "expense_summary": week_expense_summary,
+            "sales_summary": week_sales_summary
         }
         self.report_type = "weekly"
     
@@ -744,6 +1330,18 @@ class ReportsFrame(ctk.CTkFrame):
             """)
             monthly_data = cursor.fetchall()
             
+            # Get all expenses for detail
+            cursor.execute("""
+                SELECT id, name, amount, expense_date, notes
+                FROM expenses
+                ORDER BY expense_date DESC
+                LIMIT 30
+            """)
+            all_expenses = cursor.fetchall()
+            
+            # Get lifetime sales by type
+            lifetime_sales_summary = self.get_sales_summary_with_types()
+            
             conn.close()
         except Exception as e:
             print(f"Error getting all data: {e}")
@@ -751,6 +1349,8 @@ class ReportsFrame(ctk.CTkFrame):
             expenses_total = (0, 0)
             payment_types = []
             monthly_data = []
+            all_expenses = []
+            lifetime_sales_summary = {"inventory": {"count": 0, "revenue": 0}, "non_inventory": {"count": 0, "revenue": 0}, "room": {"count": 0, "revenue": 0}}
         
         # Summary Cards
         summary_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
@@ -778,6 +1378,25 @@ class ReportsFrame(ctk.CTkFrame):
             row.pack(fill="x", pady=2)
             ctk.CTkLabel(row, text=label, font=get_font(font_size), width=200).pack(side="left", padx=20)
             ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
+        
+        # Sales by Type (Lifetime)
+        type_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
+        type_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(type_frame, text="SALES BY TYPE (LIFETIME)", font=get_font_bold(font_size + 2)).pack(pady=5)
+        
+        type_stats = [
+            ("📦 Inventory", f"UGX {lifetime_sales_summary['inventory']['revenue']:,.0f}", f"{lifetime_sales_summary['inventory']['count']} items"),
+            ("🍽️ Non-Inventory", f"UGX {lifetime_sales_summary['non_inventory']['revenue']:,.0f}", f"{lifetime_sales_summary['non_inventory']['count']} items"),
+            ("🛏️ Rooms", f"UGX {lifetime_sales_summary['room']['revenue']:,.0f}", f"{lifetime_sales_summary['room']['count']} bookings")
+        ]
+        
+        for label, value, sub in type_stats:
+            row = ctk.CTkFrame(type_frame)
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=label, font=get_font(font_size), width=180).pack(side="left", padx=20)
+            ctk.CTkLabel(row, text=value, font=get_font_bold(font_size)).pack(side="right", padx=20)
+            ctk.CTkLabel(row, text=sub, font=get_font(font_size - 2), text_color="gray").pack(side="right", padx=5)
         
         # Payment Type Breakdown
         if payment_types:
@@ -810,8 +1429,64 @@ class ReportsFrame(ctk.CTkFrame):
             for month, revenue, profit, count in monthly_data:
                 row = ctk.CTkFrame(monthly_frame)
                 row.pack(fill="x", pady=2)
-                ctk.CTkLabel(row, text=month, font=get_font(font_size), width=200).pack(side="left", padx=20)
+                ctk.CTkLabel(row, text=month, font=get_font(font_size), width=150).pack(side="left", padx=20)
                 ctk.CTkLabel(row, text=f"UGX {revenue:,.0f} | Profit: UGX {profit:,.0f} ({count} sales)", font=get_font(font_size)).pack(side="right", padx=20)
+        
+        # All Expenses Detail
+        expense_frame = ctk.CTkFrame(self.report_frame, fg_color="#1a2a3a")
+        expense_frame.pack(fill="x", pady=10)
+        
+        ctk.CTkLabel(
+            expense_frame,
+            text="📝 RECENT EXPENSES (Last 30)",
+            font=get_font_bold(font_size + 2)
+        ).pack(pady=5)
+        
+        if all_expenses:
+            # Header
+            exp_header = ctk.CTkFrame(expense_frame)
+            exp_header.pack(fill="x", pady=2)
+            
+            exp_headers = ["#", "Name", "Amount", "Date", "Notes"]
+            exp_widths = [30, 180, 120, 120, 150]
+            
+            for h, w in zip(exp_headers, exp_widths):
+                ctk.CTkLabel(
+                    exp_header,
+                    text=h,
+                    font=get_font_bold(font_size),
+                    width=w
+                ).pack(side="left", padx=5)
+            
+            for idx, expense in enumerate(all_expenses[:20], 1):
+                exp_id, name, amount, date_str, notes = expense
+                
+                row = ctk.CTkFrame(expense_frame)
+                row.pack(fill="x", pady=1)
+                
+                data = [
+                    str(idx),
+                    name,
+                    f"UGX {amount:,.0f}",
+                    date_str[:10] if date_str else "",
+                    notes[:20] + "..." if notes and len(notes) > 20 else notes or ""
+                ]
+                
+                for i, d in enumerate(data):
+                    ctk.CTkLabel(
+                        row,
+                        text=d,
+                        width=exp_widths[i],
+                        anchor="w" if i > 0 else "center",
+                        font=get_font(font_size - 1)
+                    ).pack(side="left", padx=5)
+        else:
+            ctk.CTkLabel(
+                expense_frame,
+                text="No expenses recorded",
+                font=get_font(font_size),
+                text_color="gray"
+            ).pack(pady=5)
         
         # Store for export
         self.current_report = {
@@ -822,7 +1497,9 @@ class ReportsFrame(ctk.CTkFrame):
             "total_expenses": total_exp_amount or 0,
             "net_profit": (total_profit or 0) - (total_exp_amount or 0),
             "payment_types": payment_types,
-            "monthly_data": monthly_data
+            "monthly_data": monthly_data,
+            "expenses_detail": all_expenses,
+            "sales_summary": lifetime_sales_summary
         }
         self.report_type = "all_data"
     
@@ -855,6 +1532,14 @@ class ReportsFrame(ctk.CTkFrame):
                     writer.writerow(["Net Profit", report.get('net_profit', 0)])
                     writer.writerow([])
                     
+                    if report.get('sales_summary'):
+                        writer.writerow(["SALES BY TYPE"])
+                        writer.writerow(["Type", "Revenue", "Count"])
+                        writer.writerow(["Inventory", report['sales_summary']['inventory']['revenue'], report['sales_summary']['inventory']['count']])
+                        writer.writerow(["Non-Inventory", report['sales_summary']['non_inventory']['revenue'], report['sales_summary']['non_inventory']['count']])
+                        writer.writerow(["Rooms", report['sales_summary']['room']['revenue'], report['sales_summary']['room']['count']])
+                        writer.writerow([])
+                    
                     if report.get('payment_types'):
                         writer.writerow(["PAYMENT TYPE BREAKDOWN"])
                         writer.writerow(["Payment Type", "Amount", "Transactions"])
@@ -867,6 +1552,13 @@ class ReportsFrame(ctk.CTkFrame):
                         writer.writerow(["Month", "Revenue", "Profit", "Sales"])
                         for month, revenue, profit, count in report['monthly_data']:
                             writer.writerow([month, revenue, profit, count])
+                    
+                    if report.get('expenses_detail'):
+                        writer.writerow([])
+                        writer.writerow(["RECENT EXPENSES"])
+                        writer.writerow(["Name", "Amount", "Date", "Notes"])
+                        for exp in report['expenses_detail']:
+                            writer.writerow([exp[1], exp[2], exp[3], exp[4] or ""])
                 
                 elif 'weekly_data' in report and report.get('date') == "Balance Report":
                     writer.writerow(["WEEKLY BALANCE REPORT"])
@@ -892,6 +1584,15 @@ class ReportsFrame(ctk.CTkFrame):
                     writer.writerow(["Total Expenses", report.get('expenses', 0)])
                     writer.writerow(["Net Profit", report.get('net_profit', 0)])
                     writer.writerow([])
+                    
+                    if report.get('sales_summary'):
+                        writer.writerow(["SALES BY TYPE"])
+                        writer.writerow(["Type", "Revenue", "Count"])
+                        writer.writerow(["Inventory", report['sales_summary']['inventory']['revenue'], report['sales_summary']['inventory']['count']])
+                        writer.writerow(["Non-Inventory", report['sales_summary']['non_inventory']['revenue'], report['sales_summary']['non_inventory']['count']])
+                        writer.writerow(["Rooms", report['sales_summary']['room']['revenue'], report['sales_summary']['room']['count']])
+                        writer.writerow([])
+                    
                     writer.writerow(["DAILY BREAKDOWN"])
                     writer.writerow(["Date", "Revenue", "Cost", "Profit", "Expenses", "Net Profit"])
                     for date, data in sorted(report['weekly_data'].items()):
@@ -903,6 +1604,12 @@ class ReportsFrame(ctk.CTkFrame):
                             data.get('expenses', 0),
                             data.get('profit', 0) - data.get('expenses', 0)
                         ])
+                    if report.get('expenses_detail'):
+                        writer.writerow([])
+                        writer.writerow(["WEEKLY EXPENSES DETAIL"])
+                        writer.writerow(["Name", "Amount", "Date", "Notes"])
+                        for exp in report['expenses_detail']:
+                            writer.writerow([exp[1], exp[2], exp[3], exp[4] or ""])
                 
                 else:  # Daily Report
                     writer.writerow(["DAILY REPORT"])
@@ -925,6 +1632,21 @@ class ReportsFrame(ctk.CTkFrame):
                         writer.writerow(["Cash Collected", report.get('cash_collected', 0)])
                         writer.writerow(["Merchant Collected", report.get('merchant_collected', 0)])
                         writer.writerow(["Total Collected", report.get('cash_collected', 0) + report.get('merchant_collected', 0)])
+                    
+                    if hasattr(self, 'current_sales_summary'):
+                        writer.writerow([])
+                        writer.writerow(["SALES BY TYPE"])
+                        writer.writerow(["Type", "Revenue", "Count"])
+                        writer.writerow(["Inventory", self.current_sales_summary['inventory']['revenue'], self.current_sales_summary['inventory']['count']])
+                        writer.writerow(["Non-Inventory", self.current_sales_summary['non_inventory']['revenue'], self.current_sales_summary['non_inventory']['count']])
+                        writer.writerow(["Rooms", self.current_sales_summary['room']['revenue'], self.current_sales_summary['room']['count']])
+                    
+                    if hasattr(self, 'current_expenses') and self.current_expenses:
+                        writer.writerow([])
+                        writer.writerow(["DAILY EXPENSES DETAIL"])
+                        writer.writerow(["Name", "Amount", "Time", "Notes"])
+                        for exp in self.current_expenses:
+                            writer.writerow([exp[1], exp[2], exp[3], exp[4] or ""])
             
             self.show_message(f"✅ CSV exported: {filename}", "green")
             
@@ -970,6 +1692,37 @@ class ReportsFrame(ctk.CTkFrame):
                 for i, (label, value) in enumerate(cells):
                     table.cell(i, 0).text = label
                     table.cell(i, 1).text = value
+                
+                if report.get('sales_summary'):
+                    doc.add_heading('SALES BY TYPE', 2)
+                    table = doc.add_table(rows=4, cols=3)
+                    table.style = 'Table Grid'
+                    table.cell(0, 0).text = "Type"
+                    table.cell(0, 1).text = "Revenue"
+                    table.cell(0, 2).text = "Count"
+                    table.cell(1, 0).text = "Inventory"
+                    table.cell(1, 1).text = f"UGX {report['sales_summary']['inventory']['revenue']:,.0f}"
+                    table.cell(1, 2).text = str(report['sales_summary']['inventory']['count'])
+                    table.cell(2, 0).text = "Non-Inventory"
+                    table.cell(2, 1).text = f"UGX {report['sales_summary']['non_inventory']['revenue']:,.0f}"
+                    table.cell(2, 2).text = str(report['sales_summary']['non_inventory']['count'])
+                    table.cell(3, 0).text = "Rooms"
+                    table.cell(3, 1).text = f"UGX {report['sales_summary']['room']['revenue']:,.0f}"
+                    table.cell(3, 2).text = str(report['sales_summary']['room']['count'])
+                
+                # Expenses detail
+                if report.get('expenses_detail'):
+                    doc.add_heading('RECENT EXPENSES', 2)
+                    table = doc.add_table(rows=len(report['expenses_detail']) + 1, cols=4)
+                    table.style = 'Table Grid'
+                    headers = ['Name', 'Amount', 'Date', 'Notes']
+                    for i, h in enumerate(headers):
+                        table.cell(0, i).text = h
+                    for idx, exp in enumerate(report['expenses_detail'][:20], 1):
+                        table.cell(idx, 0).text = exp[1]
+                        table.cell(idx, 1).text = f"UGX {exp[2]:,.0f}"
+                        table.cell(idx, 2).text = exp[3][:10] if exp[3] else ""
+                        table.cell(idx, 3).text = exp[4] or ""
             
             elif report.get('date') == "Weekly":
                 doc.add_heading('WEEKLY PERFORMANCE', 2)
@@ -985,6 +1738,23 @@ class ReportsFrame(ctk.CTkFrame):
                 for i, (label, value) in enumerate(cells):
                     table.cell(i, 0).text = label
                     table.cell(i, 1).text = value
+                
+                if report.get('sales_summary'):
+                    doc.add_heading('SALES BY TYPE', 2)
+                    table = doc.add_table(rows=4, cols=3)
+                    table.style = 'Table Grid'
+                    table.cell(0, 0).text = "Type"
+                    table.cell(0, 1).text = "Revenue"
+                    table.cell(0, 2).text = "Count"
+                    table.cell(1, 0).text = "Inventory"
+                    table.cell(1, 1).text = f"UGX {report['sales_summary']['inventory']['revenue']:,.0f}"
+                    table.cell(1, 2).text = str(report['sales_summary']['inventory']['count'])
+                    table.cell(2, 0).text = "Non-Inventory"
+                    table.cell(2, 1).text = f"UGX {report['sales_summary']['non_inventory']['revenue']:,.0f}"
+                    table.cell(2, 2).text = str(report['sales_summary']['non_inventory']['count'])
+                    table.cell(3, 0).text = "Rooms"
+                    table.cell(3, 1).text = f"UGX {report['sales_summary']['room']['revenue']:,.0f}"
+                    table.cell(3, 2).text = str(report['sales_summary']['room']['count'])
                 
                 doc.add_heading('DAILY BREAKDOWN', 2)
                 if 'weekly_data' in report:
@@ -1002,6 +1772,20 @@ class ReportsFrame(ctk.CTkFrame):
                         table.cell(row_idx, 4).text = f"UGX {data.get('expenses', 0):,.0f}"
                         table.cell(row_idx, 5).text = f"UGX {data.get('profit', 0) - data.get('expenses', 0):,.0f}"
                         row_idx += 1
+                
+                # Weekly expenses detail
+                if report.get('expenses_detail'):
+                    doc.add_heading('WEEKLY EXPENSES DETAIL', 2)
+                    table = doc.add_table(rows=len(report['expenses_detail']) + 1, cols=4)
+                    table.style = 'Table Grid'
+                    headers = ['Name', 'Amount', 'Date', 'Notes']
+                    for i, h in enumerate(headers):
+                        table.cell(0, i).text = h
+                    for idx, exp in enumerate(report['expenses_detail'][:20], 1):
+                        table.cell(idx, 0).text = exp[1]
+                        table.cell(idx, 1).text = f"UGX {exp[2]:,.0f}"
+                        table.cell(idx, 2).text = exp[3][:10] if exp[3] else ""
+                        table.cell(idx, 3).text = exp[4] or ""
             
             elif report.get('date') == "Balance Report":
                 doc.add_heading('WEEKLY BALANCE REPORT', 2)
@@ -1025,7 +1809,7 @@ class ReportsFrame(ctk.CTkFrame):
             
             else:  # Daily Report
                 doc.add_heading('DAILY REPORT', 2)
-                table = doc.add_table(rows=11, cols=2)
+                table = doc.add_table(rows=12, cols=2)
                 table.style = 'Table Grid'
                 cells = [
                     ("Date", report.get('date', 'Unknown')),
@@ -1043,6 +1827,50 @@ class ReportsFrame(ctk.CTkFrame):
                 for i, (label, value) in enumerate(cells):
                     table.cell(i, 0).text = label
                     table.cell(i, 1).text = value
+                
+                if hasattr(self, 'current_sales_summary'):
+                    doc.add_heading('SALES BY TYPE', 2)
+                    table = doc.add_table(rows=4, cols=3)
+                    table.style = 'Table Grid'
+                    table.cell(0, 0).text = "Type"
+                    table.cell(0, 1).text = "Revenue"
+                    table.cell(0, 2).text = "Count"
+                    table.cell(1, 0).text = "Inventory"
+                    table.cell(1, 1).text = f"UGX {self.current_sales_summary['inventory']['revenue']:,.0f}"
+                    table.cell(1, 2).text = str(self.current_sales_summary['inventory']['count'])
+                    table.cell(2, 0).text = "Non-Inventory"
+                    table.cell(2, 1).text = f"UGX {self.current_sales_summary['non_inventory']['revenue']:,.0f}"
+                    table.cell(2, 2).text = str(self.current_sales_summary['non_inventory']['count'])
+                    table.cell(3, 0).text = "Rooms"
+                    table.cell(3, 1).text = f"UGX {self.current_sales_summary['room']['revenue']:,.0f}"
+                    table.cell(3, 2).text = str(self.current_sales_summary['room']['count'])
+                
+                # Daily expenses detail
+                if hasattr(self, 'current_expenses') and self.current_expenses:
+                    doc.add_heading('DAILY EXPENSES DETAIL', 2)
+                    table = doc.add_table(rows=len(self.current_expenses) + 1, cols=4)
+                    table.style = 'Table Grid'
+                    headers = ['Name', 'Amount', 'Time', 'Notes']
+                    for i, h in enumerate(headers):
+                        table.cell(0, i).text = h
+                    for idx, exp in enumerate(self.current_expenses, 1):
+                        table.cell(idx, 0).text = exp[1]
+                        table.cell(idx, 1).text = f"UGX {exp[2]:,.0f}"
+                        table.cell(idx, 2).text = exp[3][:16] if exp[3] else ""
+                        table.cell(idx, 3).text = exp[4] or ""
+                
+                if report.get('is_saturday', False):
+                    doc.add_heading('SATURDAY COLLECTION', 2)
+                    table = doc.add_table(rows=4, cols=2)
+                    table.style = 'Table Grid'
+                    cells = [
+                        ("Cash Collected", f"UGX {report.get('cash_collected', 0):,.0f}"),
+                        ("Merchant Collected", f"UGX {report.get('merchant_collected', 0):,.0f}"),
+                        ("Total Collected", f"UGX {report.get('cash_collected', 0) + report.get('merchant_collected', 0):,.0f}")
+                    ]
+                    for i, (label, value) in enumerate(cells):
+                        table.cell(i, 0).text = label
+                        table.cell(i, 1).text = value
             
             # Footer
             doc.add_paragraph()
@@ -1120,6 +1948,51 @@ class ReportsFrame(ctk.CTkFrame):
                     ('GRID', (0, 0), (-1, -1), 1, colors.black)
                 ]))
                 story.append(table)
+                
+                # Sales by type
+                if report.get('sales_summary'):
+                    story.append(Spacer(1, 0.3*inch))
+                    story.append(Paragraph("SALES BY TYPE", styles['Heading2']))
+                    data = [
+                        ["Type", "Revenue", "Count"],
+                        ["Inventory", f"UGX {report['sales_summary']['inventory']['revenue']:,.0f}", str(report['sales_summary']['inventory']['count'])],
+                        ["Non-Inventory", f"UGX {report['sales_summary']['non_inventory']['revenue']:,.0f}", str(report['sales_summary']['non_inventory']['count'])],
+                        ["Rooms", f"UGX {report['sales_summary']['room']['revenue']:,.0f}", str(report['sales_summary']['room']['count'])]
+                    ]
+                    table = Table(data, colWidths=[2*inch, 2*inch, 1*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    story.append(table)
+                
+                # Expenses detail
+                if report.get('expenses_detail'):
+                    story.append(Spacer(1, 0.3*inch))
+                    story.append(Paragraph("RECENT EXPENSES", styles['Heading2']))
+                    data = [["Name", "Amount", "Date", "Notes"]]
+                    for exp in report['expenses_detail'][:15]:
+                        data.append([
+                            exp[1],
+                            f"UGX {exp[2]:,.0f}",
+                            exp[3][:10] if exp[3] else "",
+                            exp[4] or ""
+                        ])
+                    table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('FONTSIZE', (0, 1), (-1, -1), 8)
+                    ]))
+                    story.append(table)
             
             elif report.get('date') == "Weekly":
                 story.append(Paragraph("WEEKLY PERFORMANCE", styles['Heading2']))
@@ -1145,7 +2018,28 @@ class ReportsFrame(ctk.CTkFrame):
                 story.append(table)
                 story.append(Spacer(1, 0.3*inch))
                 
+                # Sales by type
+                if report.get('sales_summary'):
+                    story.append(Paragraph("SALES BY TYPE", styles['Heading2']))
+                    data = [
+                        ["Type", "Revenue", "Count"],
+                        ["Inventory", f"UGX {report['sales_summary']['inventory']['revenue']:,.0f}", str(report['sales_summary']['inventory']['count'])],
+                        ["Non-Inventory", f"UGX {report['sales_summary']['non_inventory']['revenue']:,.0f}", str(report['sales_summary']['non_inventory']['count'])],
+                        ["Rooms", f"UGX {report['sales_summary']['room']['revenue']:,.0f}", str(report['sales_summary']['room']['count'])]
+                    ]
+                    table = Table(data, colWidths=[2*inch, 2*inch, 1*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    story.append(table)
+                
                 # Daily breakdown
+                story.append(Spacer(1, 0.3*inch))
                 story.append(Paragraph("DAILY BREAKDOWN", styles['Heading2']))
                 if 'weekly_data' in report:
                     data = [["Date", "Revenue", "Cost", "Profit", "Expenses", "Net Profit"]]
@@ -1168,6 +2062,30 @@ class ReportsFrame(ctk.CTkFrame):
                         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
                         ('GRID', (0, 0), (-1, -1), 1, colors.black),
                         ('FONTSIZE', (0, 1), (-1, -1), 9)
+                    ]))
+                    story.append(table)
+                
+                # Weekly expenses detail
+                if report.get('expenses_detail'):
+                    story.append(Spacer(1, 0.3*inch))
+                    story.append(Paragraph("WEEKLY EXPENSES DETAIL", styles['Heading2']))
+                    data = [["Name", "Amount", "Date", "Notes"]]
+                    for exp in report['expenses_detail'][:15]:
+                        data.append([
+                            exp[1],
+                            f"UGX {exp[2]:,.0f}",
+                            exp[3][:10] if exp[3] else "",
+                            exp[4] or ""
+                        ])
+                    table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('FONTSIZE', (0, 1), (-1, -1), 8)
                     ]))
                     story.append(table)
             
@@ -1227,6 +2145,51 @@ class ReportsFrame(ctk.CTkFrame):
                     ('GRID', (0, 0), (-1, -1), 1, colors.black)
                 ]))
                 story.append(table)
+                
+                # Sales by type
+                if hasattr(self, 'current_sales_summary'):
+                    story.append(Spacer(1, 0.3*inch))
+                    story.append(Paragraph("SALES BY TYPE", styles['Heading2']))
+                    data = [
+                        ["Type", "Revenue", "Count"],
+                        ["Inventory", f"UGX {self.current_sales_summary['inventory']['revenue']:,.0f}", str(self.current_sales_summary['inventory']['count'])],
+                        ["Non-Inventory", f"UGX {self.current_sales_summary['non_inventory']['revenue']:,.0f}", str(self.current_sales_summary['non_inventory']['count'])],
+                        ["Rooms", f"UGX {self.current_sales_summary['room']['revenue']:,.0f}", str(self.current_sales_summary['room']['count'])]
+                    ]
+                    table = Table(data, colWidths=[2*inch, 2*inch, 1*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    story.append(table)
+                
+                # Daily expenses detail
+                if hasattr(self, 'current_expenses') and self.current_expenses:
+                    story.append(Spacer(1, 0.3*inch))
+                    story.append(Paragraph("DAILY EXPENSES DETAIL", styles['Heading2']))
+                    data = [["Name", "Amount", "Time", "Notes"]]
+                    for exp in self.current_expenses[:15]:
+                        data.append([
+                            exp[1],
+                            f"UGX {exp[2]:,.0f}",
+                            exp[3][:16] if exp[3] else "",
+                            exp[4] or ""
+                        ])
+                    table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('FONTSIZE', (0, 1), (-1, -1), 8)
+                    ]))
+                    story.append(table)
                 
                 if report.get('is_saturday', False):
                     story.append(Spacer(1, 0.3*inch))

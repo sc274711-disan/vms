@@ -63,21 +63,38 @@ class SettingsFrame(ctk.CTkFrame):
         self.ui_settings = load_ui_settings()
         self.current_font_size = get_font_size()
         
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=1)  # Main content
+        
         # Title
-        title = ctk.CTkLabel(
-            self,
+        title_frame = ctk.CTkFrame(self, fg_color="transparent")
+        title_frame.grid(row=0, column=0, pady=(25, 15), sticky="ew")
+        
+        ctk.CTkLabel(
+            title_frame,
             text="⚙️ System Settings",
-            font=get_font_bold(24)
-        )
-        title.pack(pady=(20, 10))
+            font=get_font_bold(36),
+            text_color="#1f538d"
+        ).pack()
         
-        # Create notebook-like tabs using frames
-        main_container = ctk.CTkFrame(self)
-        main_container.pack(fill="both", expand=True, padx=20, pady=10)
+        ctk.CTkLabel(
+            title_frame,
+            text="Configure and customize your system preferences",
+            font=get_font(self.current_font_size),
+            text_color="gray"
+        ).pack()
         
-        # Tab buttons
-        tab_frame = ctk.CTkFrame(main_container)
-        tab_frame.pack(fill="x", pady=(0, 10))
+        # Main container with tabs
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.grid(row=1, column=0, padx=25, pady=5, sticky="nsew")
+        main_container.grid_columnconfigure(0, weight=1)
+        main_container.grid_rowconfigure(1, weight=1)
+        
+        # Tab buttons - Modern style
+        tab_frame = ctk.CTkFrame(main_container, fg_color="#1a2a3a", corner_radius=12)
+        tab_frame.grid(row=0, column=0, padx=5, pady=(0, 15), sticky="ew")
         
         self.tab_buttons = {}
         tabs = [
@@ -92,15 +109,21 @@ class SettingsFrame(ctk.CTkFrame):
                 tab_frame,
                 text=text,
                 command=command,
-                width=120,
-                height=35
+                width=130,
+                height=40,
+                corner_radius=10,
+                fg_color="transparent",
+                hover_color=("#2c3e50", "#1a2a3a"),
+                font=get_font(self.current_font_size)
             )
-            btn.pack(side="left", padx=5)
+            btn.pack(side="left", padx=5, pady=5)
             self.tab_buttons[text] = btn
         
-        # Content area for tabs
-        self.tab_content = ctk.CTkFrame(main_container)
-        self.tab_content.pack(fill="both", expand=True)
+        # Content area
+        self.tab_content = ctk.CTkFrame(main_container, fg_color="transparent")
+        self.tab_content.grid(row=1, column=0, sticky="nsew")
+        self.tab_content.grid_columnconfigure(0, weight=1)
+        self.tab_content.grid_rowconfigure(0, weight=1)
         
         # Show first tab by default
         self.show_date_tab()
@@ -136,11 +159,6 @@ class SettingsFrame(ctk.CTkFrame):
         elif current_tab_text == "📊 System Info":
             self.show_system_tab()
         
-        for widget in self.winfo_children():
-            if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == "⚙️ System Settings":
-                widget.configure(font=get_font_bold(24))
-                break
-        
         if current_tab_text:
             self.highlight_tab(current_tab_text)
     
@@ -153,14 +171,21 @@ class SettingsFrame(ctk.CTkFrame):
         
         font_size = get_font_size()
         
-        frame = ctk.CTkFrame(self.tab_content)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        frame = ctk.CTkFrame(
+            self.tab_content,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        frame.grid_columnconfigure(0, weight=1)
         
         ctk.CTkLabel(
             frame,
-            text="Business Date Management",
+            text="📅 Business Date Management",
             font=get_font_bold(font_size + 6)
-        ).pack(pady=10)
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             frame,
@@ -169,33 +194,35 @@ class SettingsFrame(ctk.CTkFrame):
             text_color="gray"
         ).pack(pady=5)
         
-        date_frame = ctk.CTkFrame(frame, fg_color="#1a2a3a")
-        date_frame.pack(fill="x", pady=10)
+        # Current date display
+        date_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        date_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
             date_frame,
             text="Current Business Date:",
-            font=get_font(font_size)
-        ).pack(side="left", padx=20, pady=10)
+            font=get_font_bold(font_size + 2)
+        ).pack(side="left", padx=20, pady=15)
         
         current_date = get_business_date()
         self.current_date_label = ctk.CTkLabel(
             date_frame,
             text=current_date,
-            font=get_font_bold(font_size + 4),
-            text_color="blue"
+            font=get_font_bold(font_size + 6),
+            text_color="#3498db"
         )
-        self.current_date_label.pack(side="left", padx=20, pady=10)
+        self.current_date_label.pack(side="left", padx=20, pady=15)
         
-        status_frame = ctk.CTkFrame(frame, fg_color="#1a3a1a")
-        status_frame.pack(fill="x", pady=10)
+        # Auto night audit status
+        status_frame = ctk.CTkFrame(frame, fg_color="#1a3a1a", corner_radius=10)
+        status_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
             status_frame,
             text="✅ Auto Night Audit: Active",
-            font=get_font(font_size),
-            text_color="green"
-        ).pack(pady=5)
+            font=get_font_bold(font_size + 2),
+            text_color="#2ecc71"
+        ).pack(pady=10)
         
         ctk.CTkLabel(
             status_frame,
@@ -204,62 +231,97 @@ class SettingsFrame(ctk.CTkFrame):
             text_color="gray"
         ).pack(pady=2)
         
-        set_frame = ctk.CTkFrame(frame)
-        set_frame.pack(fill="x", pady=10)
+        # Set date section
+        set_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        set_frame.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkLabel(set_frame, text="Set Date:", font=get_font(font_size)).pack(side="left", padx=5)
+        ctk.CTkLabel(
+            set_frame,
+            text="Set Date:",
+            font=get_font_bold(font_size + 2)
+        ).pack(side="left", padx=5)
         
         date_input_frame = ctk.CTkFrame(set_frame, fg_color="transparent")
         date_input_frame.pack(side="left", padx=5)
         
-        self.date_entry = ctk.CTkEntry(date_input_frame, placeholder_text="YYYY-MM-DD", width=150)
+        self.date_entry = ctk.CTkEntry(
+            date_input_frame,
+            placeholder_text="YYYY-MM-DD",
+            width=180,
+            height=40,
+            corner_radius=8,
+            font=get_font(font_size + 2)
+        )
         self.date_entry.pack(side="left", padx=5)
         self.date_entry.insert(0, current_date)
         
-        calendar_btn = ctk.CTkButton(
+        ctk.CTkButton(
             date_input_frame,
             text="📅",
-            width=35,
+            width=45,
+            height=40,
+            corner_radius=8,
+            font=get_font(font_size + 2),
+            fg_color="#1f538d",
+            hover_color="#14375e",
             command=self.open_calendar
-        )
-        calendar_btn.pack(side="left", padx=2)
+        ).pack(side="left", padx=2)
         
         ctk.CTkButton(
             set_frame,
             text="Set Date",
             command=self.update_date,
-            width=100
-        ).pack(side="left", padx=5)
+            width=120,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(font_size + 2),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
+        ).pack(side="left", padx=10)
         
-        advance_frame = ctk.CTkFrame(frame)
-        advance_frame.pack(fill="x", pady=10)
+        # Manual advance
+        advance_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        advance_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkButton(
             advance_frame,
             text="⏩ Manual Advance (Night Audit)",
             command=self.advance_day,
-            width=200,
-            fg_color="orange",
-            hover_color="darkorange"
+            width=250,
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(font_size + 2),
+            fg_color="#e67e22",
+            hover_color="#d68910"
         ).pack(side="left", padx=5)
         
         ctk.CTkLabel(
             advance_frame,
             text="⚠️ This will close today and move to tomorrow",
             font=get_font(font_size - 2),
-            text_color="orange"
+            text_color="#f39c12"
         ).pack(side="left", padx=20)
         
-        quick_frame = ctk.CTkFrame(frame)
-        quick_frame.pack(fill="x", pady=10)
+        # Quick jump
+        quick_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        quick_frame.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkLabel(quick_frame, text="Quick Jump:", font=get_font(font_size)).pack(side="left", padx=5)
+        ctk.CTkLabel(
+            quick_frame,
+            text="Quick Jump:",
+            font=get_font_bold(font_size + 2)
+        ).pack(side="left", padx=5)
         
         for days, label in [(-1, "Yesterday"), (1, "Tomorrow"), (7, "Next Week"), (-7, "Last Week")]:
             ctk.CTkButton(
                 quick_frame,
                 text=label,
-                width=100,
+                width=120,
+                height=35,
+                corner_radius=8,
+                font=get_font(font_size),
+                fg_color="#2a3a4a",
+                hover_color="#1a2a3a",
                 command=lambda d=days: self.quick_jump(d)
             ).pack(side="left", padx=5)
     
@@ -269,15 +331,15 @@ class SettingsFrame(ctk.CTkFrame):
         
         calendar_window = ctk.CTkToplevel(self)
         calendar_window.title("Select Date")
-        calendar_window.geometry("300x280")
+        calendar_window.geometry("320x300")
         calendar_window.transient(self)
         calendar_window.grab_set()
         calendar_window.focus_force()
         calendar_window.lift()
         
         calendar_window.update_idletasks()
-        width = 300
-        height = 280
+        width = 320
+        height = 300
         x = (calendar_window.winfo_screenwidth() // 2) - (width // 2)
         y = (calendar_window.winfo_screenheight() // 2) - (height // 2)
         calendar_window.geometry(f'{width}x{height}+{x}+{y}')
@@ -293,9 +355,10 @@ class SettingsFrame(ctk.CTkFrame):
             
             ctk.CTkLabel(
                 calendar_window,
-                text="Select a Date",
-                font=get_font_bold(font_size + 2)
-            ).pack(pady=10)
+                text="📅 Select a Date",
+                font=get_font_bold(font_size + 4),
+                text_color="#1f538d"
+            ).pack(pady=(15, 5))
             
             cal = Calendar(
                 calendar_window,
@@ -315,6 +378,9 @@ class SettingsFrame(ctk.CTkFrame):
             )
             cal.pack(pady=10, padx=10)
             
+            btn_frame = ctk.CTkFrame(calendar_window, fg_color="transparent")
+            btn_frame.pack(pady=10)
+            
             def select_date():
                 selected_date = cal.get_date()
                 self.date_entry.delete(0, "end")
@@ -322,22 +388,29 @@ class SettingsFrame(ctk.CTkFrame):
                 calendar_window.destroy()
                 self.update_date()
             
-            btn_frame = ctk.CTkFrame(calendar_window)
-            btn_frame.pack(pady=10)
-            
             ctk.CTkButton(
                 btn_frame,
                 text="✅ Select",
                 command=select_date,
-                width=100
-            ).pack(side="left", padx=5)
+                width=120,
+                height=40,
+                corner_radius=10,
+                font=get_font_bold(font_size + 2),
+                fg_color="#2d8f47",
+                hover_color="#1f6a33"
+            ).pack(side="left", padx=10)
             
             ctk.CTkButton(
                 btn_frame,
                 text="Cancel",
                 command=calendar_window.destroy,
-                width=100
-            ).pack(side="left", padx=5)
+                width=120,
+                height=40,
+                corner_radius=10,
+                font=get_font_bold(font_size + 2),
+                fg_color="#555555",
+                hover_color="#444444"
+            ).pack(side="left", padx=10)
         except ImportError:
             ctk.CTkLabel(
                 calendar_window,
@@ -345,9 +418,19 @@ class SettingsFrame(ctk.CTkFrame):
                 font=get_font(font_size)
             ).pack(pady=10)
             
-            entry = ctk.CTkEntry(calendar_window, placeholder_text="YYYY-MM-DD", width=200)
+            entry = ctk.CTkEntry(
+                calendar_window,
+                placeholder_text="YYYY-MM-DD",
+                width=200,
+                height=38,
+                corner_radius=8,
+                font=get_font(font_size)
+            )
             entry.pack(pady=10)
             entry.insert(0, current_date.strftime("%Y-%m-%d"))
+            
+            btn_frame = ctk.CTkFrame(calendar_window, fg_color="transparent")
+            btn_frame.pack(pady=10)
             
             def select_date():
                 date_str = entry.get().strip()
@@ -365,22 +448,29 @@ class SettingsFrame(ctk.CTkFrame):
                     )
                     error_label.pack(pady=5)
             
-            btn_frame = ctk.CTkFrame(calendar_window)
-            btn_frame.pack(pady=10)
-            
             ctk.CTkButton(
                 btn_frame,
                 text="✅ Select",
                 command=select_date,
-                width=100
-            ).pack(side="left", padx=5)
+                width=120,
+                height=40,
+                corner_radius=10,
+                font=get_font_bold(font_size + 2),
+                fg_color="#2d8f47",
+                hover_color="#1f6a33"
+            ).pack(side="left", padx=10)
             
             ctk.CTkButton(
                 btn_frame,
                 text="Cancel",
                 command=calendar_window.destroy,
-                width=100
-            ).pack(side="left", padx=5)
+                width=120,
+                height=40,
+                corner_radius=10,
+                font=get_font_bold(font_size + 2),
+                fg_color="#555555",
+                hover_color="#444444"
+            ).pack(side="left", padx=10)
     
     def update_date(self):
         """Update business date"""
@@ -429,14 +519,20 @@ class SettingsFrame(ctk.CTkFrame):
         
         font_size = get_font_size()
         
-        frame = ctk.CTkFrame(self.tab_content)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        frame = ctk.CTkFrame(
+            self.tab_content,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         ctk.CTkLabel(
             frame,
-            text="Appearance Settings",
+            text="🎨 Appearance Settings",
             font=get_font_bold(font_size + 6)
-        ).pack(pady=10)
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             frame,
@@ -445,46 +541,75 @@ class SettingsFrame(ctk.CTkFrame):
             text_color="gray"
         ).pack(pady=5)
         
-        theme_frame = ctk.CTkFrame(frame)
-        theme_frame.pack(fill="x", pady=10)
+        # Theme selection
+        theme_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        theme_frame.pack(fill="x", padx=20, pady=5)
         
-        ctk.CTkLabel(theme_frame, text="Theme:", font=get_font(font_size)).pack(side="left", padx=10)
+        ctk.CTkLabel(
+            theme_frame,
+            text="Theme:",
+            font=get_font_bold(font_size + 2),
+            width=120
+        ).pack(side="left", padx=15, pady=10)
+        
         self.theme_dropdown = ctk.CTkComboBox(
             theme_frame,
             values=["dark", "light"],
-            width=150
+            width=180,
+            height=38,
+            corner_radius=8,
+            font=get_font(font_size)
         )
         self.theme_dropdown.set(self.ui_settings.get("theme", "dark"))
-        self.theme_dropdown.pack(side="left", padx=10)
+        self.theme_dropdown.pack(side="left", padx=10, pady=10)
         
-        accent_frame = ctk.CTkFrame(frame)
-        accent_frame.pack(fill="x", pady=10)
+        # Accent color
+        accent_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        accent_frame.pack(fill="x", padx=20, pady=5)
         
-        ctk.CTkLabel(accent_frame, text="Accent Color:", font=get_font(font_size)).pack(side="left", padx=10)
+        ctk.CTkLabel(
+            accent_frame,
+            text="Accent Color:",
+            font=get_font_bold(font_size + 2),
+            width=120
+        ).pack(side="left", padx=15, pady=10)
+        
         self.accent_dropdown = ctk.CTkComboBox(
             accent_frame,
             values=["blue", "green", "dark-blue"],
-            width=150
+            width=180,
+            height=38,
+            corner_radius=8,
+            font=get_font(font_size)
         )
         self.accent_dropdown.set(self.ui_settings.get("accent", "blue"))
-        self.accent_dropdown.pack(side="left", padx=10)
+        self.accent_dropdown.pack(side="left", padx=10, pady=10)
         
         ctk.CTkLabel(
             accent_frame,
             text="(Dark/Light mode is the main setting)",
             font=get_font(font_size - 2),
             text_color="gray"
-        ).pack(side="left", padx=10)
+        ).pack(side="left", padx=15)
         
-        font_size_frame = ctk.CTkFrame(frame)
-        font_size_frame.pack(fill="x", pady=10)
+        # Font size
+        font_size_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        font_size_frame.pack(fill="x", padx=20, pady=5)
         
-        ctk.CTkLabel(font_size_frame, text="Font Size:", font=get_font(font_size)).pack(side="left", padx=10)
+        ctk.CTkLabel(
+            font_size_frame,
+            text="Font Size:",
+            font=get_font_bold(font_size + 2),
+            width=120
+        ).pack(side="left", padx=15, pady=10)
         
         self.font_size_dropdown = ctk.CTkComboBox(
             font_size_frame,
             values=["small (10)", "medium (12)", "large (14)", "xlarge (16)", "xxlarge (18)"],
-            width=150
+            width=180,
+            height=38,
+            corner_radius=8,
+            font=get_font(font_size)
         )
         
         current_font_key = self.ui_settings.get("font_size", "medium")
@@ -496,31 +621,38 @@ class SettingsFrame(ctk.CTkFrame):
             "xxlarge": "xxlarge (18)"
         }
         self.font_size_dropdown.set(font_display_map.get(current_font_key, "medium (12)"))
-        self.font_size_dropdown.pack(side="left", padx=10)
+        self.font_size_dropdown.pack(side="left", padx=10, pady=10)
         
         ctk.CTkLabel(
             font_size_frame,
             text="(Changes apply immediately)",
             font=get_font(font_size - 2),
-            text_color="green"
-        ).pack(side="left", padx=10)
+            text_color="#2ecc71"
+        ).pack(side="left", padx=15)
         
+        # Apply button
         ctk.CTkButton(
             frame,
             text="✅ Apply Appearance",
             command=self.apply_appearance,
-            width=200,
-            height=40
-        ).pack(pady=20)
+            width=220,
+            height=50,
+            corner_radius=10,
+            font=get_font_bold(font_size + 4),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
+        ).pack(pady=25)
         
-        preview_frame = ctk.CTkFrame(frame, fg_color="#1a2a3a")
-        preview_frame.pack(fill="x", pady=10)
+        # Preview section
+        preview_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        preview_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
             preview_frame,
             text="Preview",
-            font=get_font_bold(font_size + 2)
-        ).pack(pady=5)
+            font=get_font_bold(font_size + 4),
+            text_color="#1f538d"
+        ).pack(pady=(10, 5))
         
         preview_text = "Dark Mode" if self.theme_dropdown.get() == "dark" else "Light Mode"
         preview_size = self.font_size_dropdown.get().split("(")[1].replace(")", "")
@@ -534,14 +666,18 @@ class SettingsFrame(ctk.CTkFrame):
         preview_btn = ctk.CTkButton(
             preview_frame,
             text="Sample Button",
-            width=150
+            width=160,
+            height=35,
+            corner_radius=8
         )
         preview_btn.pack(pady=5)
         
         preview_entry = ctk.CTkEntry(
             preview_frame,
             placeholder_text="Sample Input",
-            width=200
+            width=220,
+            height=35,
+            corner_radius=8
         )
         preview_entry.pack(pady=5)
     
@@ -590,14 +726,20 @@ class SettingsFrame(ctk.CTkFrame):
         
         font_size = get_font_size()
         
-        frame = ctk.CTkFrame(self.tab_content)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        frame = ctk.CTkFrame(
+            self.tab_content,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         ctk.CTkLabel(
             frame,
-            text="Database Management",
+            text="💾 Database Management",
             font=get_font_bold(font_size + 6)
-        ).pack(pady=10)
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             frame,
@@ -606,14 +748,15 @@ class SettingsFrame(ctk.CTkFrame):
             text_color="gray"
         ).pack(pady=5)
         
-        info_frame = ctk.CTkFrame(frame, fg_color="#1a2a3a")
-        info_frame.pack(fill="x", pady=10)
+        info_frame = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=10)
+        info_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
             info_frame,
-            text="Database Information",
-            font=get_font_bold(font_size + 2)
-        ).pack(pady=5)
+            text="📊 Database Information",
+            font=get_font_bold(font_size + 4),
+            text_color="#1f538d"
+        ).pack(pady=10)
         
         db_exists = os.path.exists(DB_PATH)
         if db_exists:
@@ -644,31 +787,45 @@ class SettingsFrame(ctk.CTkFrame):
             size_str = "Database not found"
             records_str = "No database"
         
-        info_text = f"Location: {DB_PATH}\nSize: {size_str}\n\nRecords:\n{records_str}"
+        info_text = f"📁 Location: {DB_PATH}\n📏 Size: {size_str}\n\n📊 Records:\n{records_str}"
         
-        info_display = ctk.CTkTextbox(info_frame, height=150, font=get_font(font_size))
-        info_display.pack(fill="x", padx=10, pady=10)
+        info_display = ctk.CTkTextbox(
+            info_frame,
+            height=160,
+            font=get_font(font_size),
+            corner_radius=8,
+            fg_color="#0a0a0a"
+        )
+        info_display.pack(fill="x", padx=15, pady=10)
         info_display.insert("1.0", info_text)
         info_display.configure(state="disabled")
         
-        backup_frame = ctk.CTkFrame(frame)
-        backup_frame.pack(fill="x", pady=10)
+        backup_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        backup_frame.pack(fill="x", padx=20, pady=15)
         
         ctk.CTkButton(
             backup_frame,
             text="💾 Backup Database",
             command=self.backup_database,
             width=200,
-            height=40
-        ).pack(side="left", padx=5)
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(font_size + 2),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
+        ).pack(side="left", padx=10)
         
         ctk.CTkButton(
             backup_frame,
             text="📂 Restore Backup",
             command=self.restore_backup,
             width=200,
-            height=40
-        ).pack(side="left", padx=5)
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(font_size + 2),
+            fg_color="#1f538d",
+            hover_color="#14375e"
+        ).pack(side="left", padx=10)
     
     def backup_database(self):
         """Create a backup of the database"""
@@ -703,19 +860,25 @@ class SettingsFrame(ctk.CTkFrame):
         
         font_size = get_font_size()
         
-        frame = ctk.CTkFrame(self.tab_content)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        frame = ctk.CTkFrame(
+            self.tab_content,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         ctk.CTkLabel(
             frame,
-            text="System Information",
+            text="📊 System Information",
             font=get_font_bold(font_size + 6)
-        ).pack(pady=10)
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             frame,
             text="Valley View Motel Management System - Version 1.0",
-            font=get_font(font_size),
+            font=get_font(font_size + 2),
             text_color="gray"
         ).pack(pady=5)
         
@@ -730,32 +893,32 @@ class SettingsFrame(ctk.CTkFrame):
         ]
         
         for title, info in info_cards:
-            card = ctk.CTkFrame(frame, fg_color="#1a2a3a")
-            card.pack(fill="x", pady=5)
+            card = ctk.CTkFrame(frame, fg_color="#0a1a2a", corner_radius=8)
+            card.pack(fill="x", padx=20, pady=4)
             
             ctk.CTkLabel(
                 card,
                 text=title,
                 font=get_font_bold(font_size + 2),
-                width=120
-            ).pack(side="left", padx=10)
+                width=140
+            ).pack(side="left", padx=15, pady=8)
             
             ctk.CTkLabel(
                 card,
                 text=info,
                 font=get_font(font_size),
-                anchor="w"
-            ).pack(side="left", padx=10, fill="x", expand=True)
+                text_color="#ccddee"
+            ).pack(side="left", padx=15, pady=8, fill="x", expand=True)
         
-        audit_frame = ctk.CTkFrame(frame, fg_color="#1a3a1a")
-        audit_frame.pack(fill="x", pady=10)
+        audit_frame = ctk.CTkFrame(frame, fg_color="#1a3a1a", corner_radius=10)
+        audit_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
             audit_frame,
             text="🔄 Auto Night Audit: Running",
-            font=get_font_bold(font_size + 2),
-            text_color="green"
-        ).pack(pady=5)
+            font=get_font_bold(font_size + 4),
+            text_color="#2ecc71"
+        ).pack(pady=10)
         
         ctk.CTkLabel(
             audit_frame,
@@ -796,9 +959,13 @@ class SettingsFrame(ctk.CTkFrame):
             self.tab_content,
             text=msg,
             text_color=color,
-            font=get_font(font_size)
+            font=get_font_bold(font_size + 2),
+            fg_color="#1a2a3a" if color == "green" or color == "blue" else "#3a1a1a",
+            corner_radius=8,
+            padx=20,
+            pady=10
         )
         label.is_message = True
-        label.pack(pady=5)
+        label.pack(pady=10)
         
         self.after(3000, lambda: label.destroy() if label.winfo_exists() else None)

@@ -15,44 +15,83 @@ class InventoryFrame(ctk.CTkFrame):
         self.editing_category_id = None
         self.font_size = get_font_size()
         
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=1)  # Main content
+        
         # Title
-        title = ctk.CTkLabel(
-            self,
-            text="📦 Inventory Management",
-            font=get_font_bold(28)
-        )
-        title.pack(pady=(20, 10))
-        
-        # Create main container
-        main_container = ctk.CTkFrame(self)
-        main_container.pack(fill="both", expand=True, padx=20, pady=10)
-        
-        # Left Panel - Categories
-        left_panel = ctk.CTkFrame(main_container, width=250)
-        left_panel.pack(side="left", fill="both", padx=(0, 10))
-        left_panel.pack_propagate(False)
+        title_frame = ctk.CTkFrame(self, fg_color="transparent")
+        title_frame.grid(row=0, column=0, pady=(25, 15), sticky="ew")
         
         ctk.CTkLabel(
+            title_frame,
+            text="📦 Inventory Management",
+            font=get_font_bold(36),
+            text_color="#1f538d"
+        ).pack()
+        
+        ctk.CTkLabel(
+            title_frame,
+            text="Manage your stock and product categories",
+            font=get_font(self.font_size),
+            text_color="gray"
+        ).pack()
+        
+        # Main container
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.grid(row=1, column=0, padx=25, pady=5, sticky="nsew")
+        main_container.grid_columnconfigure(1, weight=1)
+        main_container.grid_rowconfigure(0, weight=1)
+        
+        # ============ LEFT PANEL - CATEGORIES ============
+        left_panel = ctk.CTkFrame(
+            main_container,
+            width=280,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        left_panel.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        left_panel.grid_propagate(False)
+        left_panel.grid_columnconfigure(0, weight=1)
+        
+        # Category header
+        ctk.CTkLabel(
             left_panel,
-            text="Categories",
-            font=get_font_bold(16)
-        ).pack(pady=10)
+            text="📂 Categories",
+            font=get_font_bold(18)
+        ).pack(pady=(15, 10))
         
         # Add category
-        cat_input_frame = ctk.CTkFrame(left_panel)
-        cat_input_frame.pack(fill="x", padx=10, pady=5)
+        cat_input_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        cat_input_frame.pack(fill="x", padx=15, pady=5)
         
-        ctk.CTkLabel(cat_input_frame, text="Category Name:", font=get_font(self.font_size)).pack(anchor="w")
+        ctk.CTkLabel(
+            cat_input_frame,
+            text="Category Name:",
+            font=get_font_bold(self.font_size)
+        ).pack(anchor="w")
+        
         self.category_entry = ctk.CTkEntry(
             cat_input_frame,
-            placeholder_text="Enter category name"
+            placeholder_text="Enter category name",
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
         )
-        self.category_entry.pack(fill="x", pady=(2, 5))
+        self.category_entry.pack(fill="x", pady=(5, 10))
         
         ctk.CTkButton(
             cat_input_frame,
             text="➕ Add Category",
-            command=self.add_category
+            command=self.add_category,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
         ).pack(fill="x", pady=2)
         
         # Category list
@@ -60,95 +99,203 @@ class InventoryFrame(ctk.CTkFrame):
             left_panel,
             text="Existing Categories:",
             font=get_font_bold(self.font_size)
-        ).pack(anchor="w", padx=10, pady=(10, 5))
+        ).pack(anchor="w", padx=15, pady=(15, 5))
         
-        self.category_list = ctk.CTkScrollableFrame(left_panel)
+        self.category_list = ctk.CTkScrollableFrame(
+            left_panel,
+            fg_color="transparent"
+        )
         self.category_list.pack(fill="both", expand=True, padx=10, pady=5)
         
-        # Right Panel - Items
-        right_panel = ctk.CTkFrame(main_container)
-        right_panel.pack(side="right", fill="both", expand=True)
+        # ============ RIGHT PANEL - ITEMS ============
+        right_panel = ctk.CTkFrame(
+            main_container,
+            fg_color="transparent"
+        )
+        right_panel.grid(row=0, column=1, sticky="nsew")
+        right_panel.grid_columnconfigure(0, weight=1)
+        right_panel.grid_rowconfigure(0, weight=0)  # Search
+        right_panel.grid_rowconfigure(1, weight=0)  # Form
+        right_panel.grid_rowconfigure(2, weight=1)  # List
         
-        # Search
-        search_frame = ctk.CTkFrame(right_panel)
-        search_frame.pack(fill="x", pady=(0, 10))
+        # Search bar - Modern card
+        search_frame = ctk.CTkFrame(
+            right_panel,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        search_frame.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
+        search_frame.grid_columnconfigure(1, weight=1)
         
-        ctk.CTkLabel(search_frame, text="Search:", font=get_font(self.font_size)).pack(side="left", padx=5)
+        ctk.CTkLabel(
+            search_frame,
+            text="🔍",
+            font=get_font(self.font_size + 6)
+        ).grid(row=0, column=0, padx=(15, 5), pady=10)
+        
         self.search_entry = ctk.CTkEntry(
             search_frame,
-            placeholder_text="🔍 Search items by name or category...",
-            width=300
+            placeholder_text="Search items by name or category...",
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
         )
-        self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.search_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=10)
         
         ctk.CTkButton(
             search_frame,
             text="Search",
             command=self.search_items,
-            width=100
-        ).pack(side="right", padx=2)
+            width=100,
+            height=38,
+            corner_radius=8,
+            font=get_font_bold(self.font_size),
+            fg_color="#1f538d",
+            hover_color="#14375e"
+        ).grid(row=0, column=2, padx=5, pady=10)
         
         ctk.CTkButton(
             search_frame,
             text="Clear",
             command=self.load_items,
-            width=100
-        ).pack(side="right", padx=2)
+            width=80,
+            height=38,
+            corner_radius=8,
+            font=get_font_bold(self.font_size),
+            fg_color="#555555",
+            hover_color="#444444"
+        ).grid(row=0, column=3, padx=(0, 15), pady=10)
         
-        # Add item form
-        form_frame = ctk.CTkFrame(right_panel)
-        form_frame.pack(fill="x", pady=(0, 10))
+        # Add/Edit Item Form - Modern card
+        form_frame = ctk.CTkFrame(
+            right_panel,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        form_frame.grid(row=1, column=0, padx=5, pady=(0, 10), sticky="ew")
+        form_frame.grid_columnconfigure(0, weight=1)
         
         ctk.CTkLabel(
             form_frame,
-            text="Add / Edit Item",
-            font=get_font_bold(14)
-        ).pack(pady=5)
+            text="✏️ Add / Edit Item",
+            font=get_font_bold(18)
+        ).pack(pady=(15, 10))
         
-        input_frame = ctk.CTkFrame(form_frame)
-        input_frame.pack(fill="x", pady=5)
+        input_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        input_frame.pack(fill="x", padx=20, pady=5)
         
         # Row 1: Item Name and Category
-        row1 = ctk.CTkFrame(input_frame)
-        row1.pack(fill="x", pady=2)
+        row1 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+        row1.grid_columnconfigure(1, weight=1)
+        row1.grid_columnconfigure(3, weight=1)
         
-        ctk.CTkLabel(row1, text="Item Name:", font=get_font(self.font_size), width=80).pack(side="left", padx=5)
-        self.item_name = ctk.CTkEntry(row1, placeholder_text="e.g., Beer", width=180)
-        self.item_name.pack(side="left", padx=5)
+        ctk.CTkLabel(
+            row1,
+            text="Item Name:",
+            font=get_font_bold(self.font_size),
+            width=100
+        ).grid(row=0, column=0, sticky="w", padx=5)
         
-        ctk.CTkLabel(row1, text="Category:", font=get_font(self.font_size), width=70).pack(side="left", padx=5)
+        self.item_name = ctk.CTkEntry(
+            row1,
+            placeholder_text="e.g., Beer",
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
+        self.item_name.grid(row=0, column=1, sticky="ew", padx=5)
+        
+        ctk.CTkLabel(
+            row1,
+            text="Category:",
+            font=get_font_bold(self.font_size),
+            width=80
+        ).grid(row=0, column=2, sticky="w", padx=5)
+        
         self.item_category = ctk.CTkComboBox(
             row1,
             values=[cat[1] for cat in get_all_categories()],
-            width=150
+            width=180,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
         )
-        self.item_category.pack(side="left", padx=5)
+        self.item_category.grid(row=0, column=3, sticky="w", padx=5)
         
         # Row 2: Quantity, Cost, Price
-        row2 = ctk.CTkFrame(input_frame)
-        row2.pack(fill="x", pady=2)
+        row2 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(row2, text="Quantity:", font=get_font(self.font_size), width=80).pack(side="left", padx=5)
-        self.item_quantity = ctk.CTkEntry(row2, placeholder_text="e.g., 50", width=100)
+        ctk.CTkLabel(
+            row2,
+            text="Quantity:",
+            font=get_font_bold(self.font_size),
+            width=100
+        ).pack(side="left", padx=5)
+        
+        self.item_quantity = ctk.CTkEntry(
+            row2,
+            placeholder_text="e.g., 50",
+            width=120,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
         self.item_quantity.pack(side="left", padx=5)
         
-        ctk.CTkLabel(row2, text="Cost Price:", font=get_font(self.font_size), width=80).pack(side="left", padx=5)
-        self.item_cost = ctk.CTkEntry(row2, placeholder_text="e.g., 4000", width=120)
+        ctk.CTkLabel(
+            row2,
+            text="Cost Price:",
+            font=get_font_bold(self.font_size),
+            width=100
+        ).pack(side="left", padx=5)
+        
+        self.item_cost = ctk.CTkEntry(
+            row2,
+            placeholder_text="e.g., 4000",
+            width=140,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
         self.item_cost.pack(side="left", padx=5)
         
-        ctk.CTkLabel(row2, text="Selling Price:", font=get_font(self.font_size), width=90).pack(side="left", padx=5)
-        self.item_price = ctk.CTkEntry(row2, placeholder_text="e.g., 5000", width=120)
+        ctk.CTkLabel(
+            row2,
+            text="Selling Price:",
+            font=get_font_bold(self.font_size),
+            width=110
+        ).pack(side="left", padx=5)
+        
+        self.item_price = ctk.CTkEntry(
+            row2,
+            placeholder_text="e.g., 5000",
+            width=140,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
         self.item_price.pack(side="left", padx=5)
         
         # Row 3: Buttons
-        row3 = ctk.CTkFrame(input_frame)
-        row3.pack(fill="x", pady=5)
+        row3 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row3.pack(fill="x", pady=15)
         
         self.add_btn = ctk.CTkButton(
             row3,
             text="➕ Add Item",
             command=self.add_item,
-            width=120
+            width=140,
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(self.font_size + 2),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
         )
         self.add_btn.pack(side="left", padx=5)
         
@@ -156,10 +303,14 @@ class InventoryFrame(ctk.CTkFrame):
             row3,
             text="🔄 Clear Form",
             command=self.clear_item_form,
-            width=120
+            width=130,
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(self.font_size),
+            fg_color="#555555",
+            hover_color="#444444"
         ).pack(side="left", padx=5)
         
-        # Hint text
         ctk.CTkLabel(
             row3,
             text="💡 Tip: To restock, enter quantity to add (e.g., +50)",
@@ -167,15 +318,29 @@ class InventoryFrame(ctk.CTkFrame):
             text_color="gray"
         ).pack(side="left", padx=20)
         
-        # Item list
-        ctk.CTkLabel(
+        # Item list - Modern card
+        list_frame = ctk.CTkFrame(
             right_panel,
-            text="Inventory Items:",
-            font=get_font_bold(self.font_size)
-        ).pack(anchor="w", pady=(10, 5))
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        list_frame.grid(row=2, column=0, padx=5, pady=(0, 5), sticky="nsew")
+        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_rowconfigure(1, weight=1)
         
-        self.item_list = ctk.CTkScrollableFrame(right_panel)
-        self.item_list.pack(fill="both", expand=True)
+        ctk.CTkLabel(
+            list_frame,
+            text="📋 Inventory Items",
+            font=get_font_bold(18)
+        ).pack(pady=(15, 10))
+        
+        self.item_list = ctk.CTkScrollableFrame(
+            list_frame,
+            fg_color="transparent"
+        )
+        self.item_list.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Load data
         self.load_categories()
@@ -195,27 +360,34 @@ class InventoryFrame(ctk.CTkFrame):
                 text="No categories yet",
                 font=get_font(font_size),
                 text_color="gray"
-            ).pack(pady=10)
+            ).pack(pady=20)
             return
         
         for cat_id, name in categories:
-            frame = ctk.CTkFrame(self.category_list)
-            frame.pack(fill="x", pady=2)
+            frame = ctk.CTkFrame(
+                self.category_list,
+                fg_color="#1a2a3a",
+                corner_radius=8
+            )
+            frame.pack(fill="x", pady=3)
             
             ctk.CTkLabel(
                 frame,
                 text=name,
-                font=get_font(font_size)
-            ).pack(side="left", padx=10)
+                font=get_font(font_size + 2),
+                text_color="#ccddee"
+            ).pack(side="left", padx=15, pady=8)
             
             ctk.CTkButton(
                 frame,
                 text="✕",
-                width=25,
-                fg_color="red",
-                hover_color="darkred",
+                width=28,
+                height=28,
+                corner_radius=8,
+                fg_color="#6a2a2a",
+                hover_color="#5a1a1a",
                 command=lambda cid=cat_id: self.delete_category(cid)
-            ).pack(side="right", padx=5)
+            ).pack(side="right", padx=10)
         
         # Update dropdown
         self.item_category.configure(values=[cat[1] for cat in get_all_categories()])
@@ -263,31 +435,43 @@ class InventoryFrame(ctk.CTkFrame):
                 text="No items found. Add your first item above!",
                 font=get_font(font_size + 2),
                 text_color="gray"
-            ).pack(pady=20)
+            ).pack(pady=30)
             return
         
         # Header
-        header = ctk.CTkFrame(self.item_list)
+        header = ctk.CTkFrame(
+            self.item_list,
+            fg_color="#0a1a2a",
+            corner_radius=8
+        )
         header.pack(fill="x", pady=5)
         
         headers = ["Category", "Item", "Qty", "Cost", "Selling", "Actions"]
-        for h in headers:
+        widths = [100, 120, 60, 100, 100, 160]
+        
+        for h, w in zip(headers, widths):
             ctk.CTkLabel(
                 header,
                 text=h,
                 font=get_font_bold(font_size),
-                width=100 if h != "Actions" else 150
-            ).pack(side="left", padx=5)
+                width=w,
+                text_color="#8899aa"
+            ).pack(side="left", padx=8, pady=8)
         
         for item in items:
-            self.display_item(item)
+            self.display_item(item, font_size)
     
-    def display_item(self, item):
+    def display_item(self, item, font_size=None):
         """Display a single item"""
+        if font_size is None:
+            font_size = get_font_size()
+            
         item_id, category, name, qty, cost, price = item
-        font_size = get_font_size()
         
-        row = ctk.CTkFrame(self.item_list)
+        row = ctk.CTkFrame(
+            self.item_list,
+            corner_radius=6
+        )
         row.pack(fill="x", pady=2)
         
         # Color code based on quantity
@@ -301,14 +485,17 @@ class InventoryFrame(ctk.CTkFrame):
         row.configure(fg_color=color)
         
         data = [category, name, str(qty), f"UGX {cost:,.0f}", f"UGX {price:,.0f}"]
+        widths = [100, 120, 60, 100, 100]
+        
         for i, d in enumerate(data):
             ctk.CTkLabel(
                 row,
                 text=d,
-                width=100,
+                width=widths[i],
                 anchor="w",
-                font=get_font(font_size)
-            ).pack(side="left", padx=5)
+                font=get_font(font_size),
+                text_color="#ccddee"
+            ).pack(side="left", padx=8, pady=6)
         
         # Actions
         actions = ctk.CTkFrame(row, fg_color="transparent")
@@ -316,24 +503,34 @@ class InventoryFrame(ctk.CTkFrame):
         
         ctk.CTkButton(
             actions,
-            text="✏️ Edit",
-            width=60,
+            text="✏️",
+            width=32,
+            height=32,
+            corner_radius=8,
+            fg_color="#2a4a6a",
+            hover_color="#1a3a5a",
             command=lambda i=item: self.edit_item(i)
         ).pack(side="left", padx=2)
         
         ctk.CTkButton(
             actions,
-            text="➕ Stock",
-            width=70,
+            text="➕",
+            width=32,
+            height=32,
+            corner_radius=8,
+            fg_color="#2d8f47",
+            hover_color="#1f6a33",
             command=lambda i=item: self.add_stock(i)
         ).pack(side="left", padx=2)
         
         ctk.CTkButton(
             actions,
             text="🗑️",
-            width=30,
-            fg_color="red",
-            hover_color="darkred",
+            width=32,
+            height=32,
+            corner_radius=8,
+            fg_color="#6a2a2a",
+            hover_color="#5a1a1a",
             command=lambda i=item: self.delete_item(i)
         ).pack(side="left", padx=2)
     
@@ -388,68 +585,73 @@ class InventoryFrame(ctk.CTkFrame):
     def edit_item(self, item):
         """Edit an existing item - load into form"""
         item_id, category, name, qty, cost, price = item
-        font_size = get_font_size()
         
         self.editing_item_id = item_id
         self.item_name.delete(0, "end")
         self.item_name.insert(0, name)
         self.item_category.set(category)
         self.item_quantity.delete(0, "end")
-        self.item_quantity.insert(0, "0")  # Default to 0 for adding stock
+        self.item_quantity.insert(0, "0")
         self.item_quantity.configure(placeholder_text="Enter quantity to add")
         self.item_cost.delete(0, "end")
         self.item_cost.insert(0, str(cost))
         self.item_price.delete(0, "end")
         self.item_price.insert(0, str(price))
         
-        self.add_btn.configure(text="🔄 Update (Add Stock)")
-        self.show_message(f"Editing: {name}. Enter quantity to ADD to current stock ({qty} units)", "blue")
+        self.add_btn.configure(text="🔄 Update (Add Stock)", fg_color="#f39c12", hover_color="#d68910")
+        self.show_message(f"✏️ Editing: {name}. Enter quantity to ADD to current stock ({qty} units)", "blue")
     
     def add_stock(self, item):
         """Quick stock addition"""
         item_id, category, name, qty, cost, price = item
-        font_size = get_font_size()
         
         dialog = ctk.CTkToplevel(self)
         dialog.title("Add Stock")
-        dialog.geometry("400x200")
+        dialog.geometry("420x230")
         dialog.transient(self)
         dialog.grab_set()
         dialog.focus_force()
         dialog.lift()
         
-        # Center the dialog
         dialog.update_idletasks()
-        width = 400
-        height = 200
+        width = 420
+        height = 230
         x = (dialog.winfo_screenwidth() // 2) - (width // 2)
         y = (dialog.winfo_screenheight() // 2) - (height // 2)
         dialog.geometry(f'{width}x{height}+{x}+{y}')
         
         ctk.CTkLabel(
             dialog,
-            text=f"Add Stock: {name}",
-            font=get_font_bold(16)
-        ).pack(pady=10)
+            text=f"📦 Add Stock: {name}",
+            font=get_font_bold(20),
+            text_color="#1f538d"
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             dialog,
             text=f"Current Stock: {qty} units",
-            font=get_font(font_size)
+            font=get_font(self.font_size + 2)
         ).pack(pady=5)
         
         ctk.CTkLabel(
             dialog,
             text="Quantity to Add:",
-            font=get_font(font_size)
+            font=get_font_bold(self.font_size)
         ).pack(pady=5)
         
-        qty_entry = ctk.CTkEntry(dialog, placeholder_text="Enter quantity", width=150)
+        qty_entry = ctk.CTkEntry(
+            dialog,
+            placeholder_text="Enter quantity",
+            width=180,
+            height=40,
+            corner_radius=8,
+            font=get_font(self.font_size + 2)
+        )
         qty_entry.pack(pady=5)
         qty_entry.focus()
         
-        btn_frame = ctk.CTkFrame(dialog)
-        btn_frame.pack(pady=10)
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=15)
         
         def confirm():
             try:
@@ -458,7 +660,6 @@ class InventoryFrame(ctk.CTkFrame):
                     self.show_message("Quantity must be greater than 0", "red")
                     return
                 
-                # Update stock by adding quantity
                 success, msg = update_item(item_id, name, add_qty, cost, price, add_to_stock=True)
                 dialog.destroy()
                 if success:
@@ -473,45 +674,61 @@ class InventoryFrame(ctk.CTkFrame):
             btn_frame,
             text="✅ Add Stock",
             command=confirm,
-            width=120
-        ).pack(side="left", padx=5)
+            width=130,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size + 2),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
+        ).pack(side="left", padx=10)
         
         ctk.CTkButton(
             btn_frame,
             text="Cancel",
             command=dialog.destroy,
-            width=120
-        ).pack(side="left", padx=5)
+            width=130,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size + 2),
+            fg_color="#555555",
+            hover_color="#444444"
+        ).pack(side="left", padx=10)
     
     def delete_item(self, item):
         """Delete an item"""
         item_id, _, name, _, _, _ = item
-        font_size = get_font_size()
         
-        # Confirm deletion
         dialog = ctk.CTkToplevel(self)
         dialog.title("Confirm Delete")
-        dialog.geometry("300x150")
+        dialog.geometry("350x180")
         dialog.transient(self)
         dialog.grab_set()
         dialog.focus_force()
         dialog.lift()
         
+        dialog.update_idletasks()
+        width = 350
+        height = 180
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f'{width}x{height}+{x}+{y}')
+        
         ctk.CTkLabel(
             dialog,
-            text=f"Delete '{name}'?",
-            font=get_font_bold(14)
-        ).pack(pady=10)
+            text=f"🗑️ Delete '{name}'?",
+            font=get_font_bold(18),
+            text_color="red"
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             dialog,
             text="This action cannot be undone!",
             text_color="red",
-            font=get_font(font_size - 2)
+            font=get_font(self.font_size - 2)
         ).pack()
         
-        btn_frame = ctk.CTkFrame(dialog)
-        btn_frame.pack(pady=10)
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=20)
         
         def confirm():
             success, msg = delete_item(item_id)
@@ -524,16 +741,27 @@ class InventoryFrame(ctk.CTkFrame):
         
         ctk.CTkButton(
             btn_frame,
-            text="Delete",
+            text="🗑️ Delete",
             fg_color="red",
-            command=confirm
-        ).pack(side="left", padx=5)
+            hover_color="darkred",
+            command=confirm,
+            width=120,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size)
+        ).pack(side="left", padx=10)
         
         ctk.CTkButton(
             btn_frame,
             text="Cancel",
-            command=dialog.destroy
-        ).pack(side="left", padx=5)
+            command=dialog.destroy,
+            width=120,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size),
+            fg_color="#555555",
+            hover_color="#444444"
+        ).pack(side="left", padx=10)
     
     def search_items(self):
         """Search items"""
@@ -557,24 +785,25 @@ class InventoryFrame(ctk.CTkFrame):
         self.item_cost.delete(0, "end")
         self.item_price.delete(0, "end")
         self.editing_item_id = None
-        self.add_btn.configure(text="➕ Add Item")
+        self.add_btn.configure(text="➕ Add Item", fg_color="#2d8f47", hover_color="#1f6a33")
     
     def show_message(self, msg, color="green"):
         """Show a message in the item list"""
-        # Remove old messages
         for widget in self.item_list.winfo_children():
             if hasattr(widget, "is_message"):
                 widget.destroy()
-        
-        font_size = get_font_size()
         
         label = ctk.CTkLabel(
             self.item_list,
             text=msg,
             text_color=color,
-            font=get_font(font_size)
+            font=get_font_bold(self.font_size),
+            fg_color="#1a2a3a" if color == "green" or color == "blue" else "#3a1a1a",
+            corner_radius=8,
+            padx=20,
+            pady=10
         )
         label.is_message = True
-        label.pack(pady=5)
+        label.pack(pady=10, fill="x")
         
         self.after(3000, lambda: label.destroy() if label.winfo_exists() else None)

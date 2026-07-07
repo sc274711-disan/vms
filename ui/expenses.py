@@ -14,65 +14,144 @@ class ExpensesFrame(ctk.CTkFrame):
         self.editing_expense_id = None
         self.font_size = get_font_size()
         
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=1)  # Main content
+        
         # Title
-        title = ctk.CTkLabel(
-            self,
+        title_frame = ctk.CTkFrame(self, fg_color="transparent")
+        title_frame.grid(row=0, column=0, pady=(25, 15), sticky="ew")
+        
+        ctk.CTkLabel(
+            title_frame,
             text="💸 Expenses Management",
-            font=get_font_bold(28)
-        )
-        title.pack(pady=(20, 10))
+            font=get_font_bold(36),
+            text_color="#1f538d"
+        ).pack()
+        
+        ctk.CTkLabel(
+            title_frame,
+            text="Track and manage all your business expenses",
+            font=get_font(self.font_size),
+            text_color="gray"
+        ).pack()
         
         # Main container
-        main_container = ctk.CTkFrame(self)
-        main_container.pack(fill="both", expand=True, padx=20, pady=10)
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.grid(row=1, column=0, padx=25, pady=5, sticky="nsew")
+        main_container.grid_columnconfigure(0, weight=1)
+        main_container.grid_rowconfigure(0, weight=0)  # Summary
+        main_container.grid_rowconfigure(1, weight=0)  # Form
+        main_container.grid_rowconfigure(2, weight=0)  # Filters
+        main_container.grid_rowconfigure(3, weight=1)  # List
         
-        # Today's Summary
-        self.summary_frame = ctk.CTkFrame(main_container, fg_color="#1a2a3a")
-        self.summary_frame.pack(fill="x", pady=(0, 10))
+        # Today's Summary - Modern card
+        self.summary_frame = ctk.CTkFrame(
+            main_container,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        self.summary_frame.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="ew")
+        self.summary_frame.grid_columnconfigure(0, weight=1)
         self.update_today_summary()
         
-        # Expense Form
-        form_frame = ctk.CTkFrame(main_container)
-        form_frame.pack(fill="x", pady=(0, 10))
+        # Expense Form - Modern card
+        form_frame = ctk.CTkFrame(
+            main_container,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        form_frame.grid(row=1, column=0, padx=5, pady=(0, 10), sticky="ew")
+        form_frame.grid_columnconfigure(0, weight=1)
         
         ctk.CTkLabel(
             form_frame,
-            text="Post Expense",
-            font=get_font_bold(16)
-        ).pack(pady=5)
+            text="📝 Post Expense",
+            font=get_font_bold(18)
+        ).pack(pady=(15, 10))
         
-        input_frame = ctk.CTkFrame(form_frame)
-        input_frame.pack(fill="x", pady=5)
+        input_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        input_frame.pack(fill="x", padx=20, pady=5)
         
         # Row 1: Name and Amount
-        row1 = ctk.CTkFrame(input_frame)
-        row1.pack(fill="x", pady=2)
+        row1 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+        row1.grid_columnconfigure(1, weight=1)
+        row1.grid_columnconfigure(3, weight=1)
         
-        ctk.CTkLabel(row1, text="Expense Name:", font=get_font(self.font_size), width=100).pack(side="left", padx=5)
-        self.name_entry = ctk.CTkEntry(row1, placeholder_text="e.g., Electricity Bill", width=250)
-        self.name_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(
+            row1,
+            text="Expense Name:",
+            font=get_font_bold(self.font_size),
+            width=120
+        ).grid(row=0, column=0, sticky="w", padx=5)
         
-        ctk.CTkLabel(row1, text="Amount (UGX):", font=get_font(self.font_size), width=100).pack(side="left", padx=5)
-        self.amount_entry = ctk.CTkEntry(row1, placeholder_text="e.g., 150000", width=150)
-        self.amount_entry.pack(side="left", padx=5)
+        self.name_entry = ctk.CTkEntry(
+            row1,
+            placeholder_text="e.g., Electricity Bill",
+            width=250,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
+        self.name_entry.grid(row=0, column=1, sticky="ew", padx=5)
+        
+        ctk.CTkLabel(
+            row1,
+            text="Amount (UGX):",
+            font=get_font_bold(self.font_size),
+            width=120
+        ).grid(row=0, column=2, sticky="w", padx=5)
+        
+        self.amount_entry = ctk.CTkEntry(
+            row1,
+            placeholder_text="e.g., 150000",
+            width=180,
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
+        self.amount_entry.grid(row=0, column=3, sticky="w", padx=5)
         
         # Row 2: Notes
-        row2 = ctk.CTkFrame(input_frame)
-        row2.pack(fill="x", pady=2)
+        row2 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(row2, text="Notes:", font=get_font(self.font_size), width=100).pack(side="left", padx=5)
-        self.notes_entry = ctk.CTkEntry(row2, placeholder_text="Optional notes", width=400)
-        self.notes_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(
+            row2,
+            text="Notes:",
+            font=get_font_bold(self.font_size),
+            width=120
+        ).pack(side="left", padx=5)
+        
+        self.notes_entry = ctk.CTkEntry(
+            row2,
+            placeholder_text="Optional notes",
+            height=38,
+            corner_radius=8,
+            font=get_font(self.font_size)
+        )
+        self.notes_entry.pack(side="left", padx=5, fill="x", expand=True)
         
         # Row 3: Buttons
-        row3 = ctk.CTkFrame(input_frame)
-        row3.pack(fill="x", pady=10)
+        row3 = ctk.CTkFrame(input_frame, fg_color="transparent")
+        row3.pack(fill="x", pady=15)
         
         self.add_btn = ctk.CTkButton(
             row3,
             text="💸 Post Expense",
             command=self.record_expense,
-            width=150
+            width=160,
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(self.font_size + 2),
+            fg_color="#2d8f47",
+            hover_color="#1f6a33"
         )
         self.add_btn.pack(side="left", padx=5)
         
@@ -80,43 +159,74 @@ class ExpensesFrame(ctk.CTkFrame):
             row3,
             text="🔄 Clear Form",
             command=self.clear_form,
-            width=120
+            width=130,
+            height=45,
+            corner_radius=10,
+            font=get_font_bold(self.font_size),
+            fg_color="#555555",
+            hover_color="#444444"
         ).pack(side="left", padx=5)
         
         # Status label
-        self.status_label = ctk.CTkLabel(row3, text="", font=get_font(self.font_size - 2))
+        self.status_label = ctk.CTkLabel(
+            row3,
+            text="",
+            font=get_font(self.font_size - 2),
+            text_color="gray"
+        )
         self.status_label.pack(side="left", padx=20)
         
-        # Filter buttons
-        filter_frame = ctk.CTkFrame(main_container)
-        filter_frame.pack(fill="x", pady=5)
+        # Filter buttons - Modern style
+        filter_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+        filter_frame.grid(row=2, column=0, padx=5, pady=(0, 10), sticky="ew")
         
         ctk.CTkButton(
             filter_frame,
             text="📅 Today",
             command=self.show_today_expenses,
-            width=100
+            width=100,
+            height=35,
+            corner_radius=8,
+            font=get_font(self.font_size),
+            fg_color="#1f538d",
+            hover_color="#14375e"
         ).pack(side="left", padx=5)
         
         ctk.CTkButton(
             filter_frame,
             text="📊 All Expenses",
             command=self.load_all_expenses,
-            width=120
+            width=120,
+            height=35,
+            corner_radius=8,
+            font=get_font(self.font_size),
+            fg_color="#2a3a4a",
+            hover_color="#1a2a3a"
         ).pack(side="left", padx=5)
         
-        # Expenses List
-        list_frame = ctk.CTkFrame(main_container)
-        list_frame.pack(fill="both", expand=True)
+        # Expenses List - Modern card
+        list_frame = ctk.CTkFrame(
+            main_container,
+            fg_color="#1a2a3a",
+            corner_radius=12,
+            border_width=1,
+            border_color="#2a3a4a"
+        )
+        list_frame.grid(row=3, column=0, padx=5, pady=(0, 5), sticky="nsew")
+        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_rowconfigure(1, weight=1)
         
         ctk.CTkLabel(
             list_frame,
-            text="Expenses List",
-            font=get_font_bold(16)
-        ).pack(pady=5)
+            text="📋 Expenses List",
+            font=get_font_bold(18)
+        ).pack(pady=(15, 10))
         
-        self.expenses_list = ctk.CTkScrollableFrame(list_frame)
-        self.expenses_list.pack(fill="both", expand=True, pady=5)
+        self.expenses_list = ctk.CTkScrollableFrame(
+            list_frame,
+            fg_color="transparent"
+        )
+        self.expenses_list.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Load expenses - show today by default
         self.load_expenses(filter_date=datetime.now().strftime("%Y-%m-%d"))
@@ -146,22 +256,29 @@ class ExpensesFrame(ctk.CTkFrame):
             print(f"Error getting today's expenses: {e}")
             total_today, count_today = 0, 0
         
-        try:
-            ctk.CTkLabel(
-                self.summary_frame,
-                text=f"📅 Today's Expenses: UGX {total_today:,.0f}",
-                font=get_font_bold(font_size + 4),
-                text_color="orange" if total_today > 0 else "gray"
-            ).pack(side="left", padx=20, pady=10)
-            
-            ctk.CTkLabel(
-                self.summary_frame,
-                text=f"({count_today} entries)",
-                font=get_font(font_size),
-                text_color="gray"
-            ).pack(side="left", padx=5, pady=10)
-        except Exception as e:
-            print(f"Error creating summary labels: {e}")
+        # Summary row with modern styling
+        summary_inner = ctk.CTkFrame(self.summary_frame, fg_color="transparent")
+        summary_inner.pack(fill="x", padx=15, pady=10)
+        
+        ctk.CTkLabel(
+            summary_inner,
+            text="📅 Today's Expenses",
+            font=get_font_bold(font_size + 2)
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            summary_inner,
+            text=f"UGX {total_today:,.0f}",
+            font=get_font_bold(font_size + 6),
+            text_color="orange" if total_today > 0 else "gray"
+        ).pack(side="right")
+        
+        ctk.CTkLabel(
+            summary_inner,
+            text=f"({count_today} entries)",
+            font=get_font(font_size - 1),
+            text_color="gray"
+        ).pack(side="right", padx=10)
     
     def show_today_expenses(self):
         """Show only today's expenses"""
@@ -193,7 +310,7 @@ class ExpensesFrame(ctk.CTkFrame):
                     WHERE DATE(expense_date) = ?
                     ORDER BY id DESC
                 """, (filter_date,))
-                title = f"📅 Expenses for {filter_date}"
+                title = f"📅 {filter_date}"
             else:
                 cursor.execute("""
                     SELECT id, name, amount, expense_date, notes
@@ -211,55 +328,54 @@ class ExpensesFrame(ctk.CTkFrame):
         # Update summary
         self.update_today_summary()
         
-        # Show title - ALWAYS show this
-        try:
-            title_label = ctk.CTkLabel(
-                self.expenses_list,
-                text=title,
-                font=get_font_bold(font_size + 2)
-            )
-            title_label.pack(pady=10)
-        except Exception as e:
-            print(f"Error creating title: {e}")
+        # Show title
+        title_label = ctk.CTkLabel(
+            self.expenses_list,
+            text=title,
+            font=get_font_bold(font_size + 2),
+            text_color="#1f538d"
+        )
+        title_label.pack(anchor="w", pady=(5, 10))
         
         if not expenses:
-            try:
-                ctk.CTkLabel(
-                    self.expenses_list,
-                    text="No expenses recorded for this period",
-                    font=get_font(font_size + 2),
-                    text_color="gray"
-                ).pack(pady=20)
-            except Exception as e:
-                print(f"Error creating no expenses message: {e}")
+            ctk.CTkLabel(
+                self.expenses_list,
+                text="No expenses recorded for this period",
+                font=get_font(font_size + 2),
+                text_color="gray"
+            ).pack(pady=30)
             return
         
-        # Header
-        try:
-            header = ctk.CTkFrame(self.expenses_list)
-            header.pack(fill="x", pady=5)
-            
-            headers = ["#", "Name", "Amount", "Date", "Notes", "Actions"]
-            widths = [40, 150, 120, 150, 200, 200]
-            for h, w in zip(headers, widths):
-                ctk.CTkLabel(
-                    header,
-                    text=h,
-                    font=get_font_bold(font_size),
-                    width=w
-                ).pack(side="left", padx=5)
-        except Exception as e:
-            print(f"Error creating header: {e}")
+        # Header with modern styling
+        header = ctk.CTkFrame(
+            self.expenses_list,
+            fg_color="#0a1a2a",
+            corner_radius=8
+        )
+        header.pack(fill="x", pady=5)
+        
+        headers = ["#", "Name", "Amount", "Date", "Notes", "Actions"]
+        widths = [35, 150, 130, 150, 200, 160]
+        
+        for i, (h, w) in enumerate(zip(headers, widths)):
+            ctk.CTkLabel(
+                header,
+                text=h,
+                font=get_font_bold(font_size),
+                width=w,
+                text_color="#8899aa"
+            ).pack(side="left", padx=8, pady=8)
         
         for idx, expense in enumerate(expenses, 1):
             try:
                 exp_id, name, amount, date, notes = expense
                 
-                row = ctk.CTkFrame(self.expenses_list)
+                row = ctk.CTkFrame(
+                    self.expenses_list,
+                    fg_color="#1a2a3a" if idx % 2 == 0 else "#15202a",
+                    corner_radius=6
+                )
                 row.pack(fill="x", pady=2)
-                
-                if idx % 2 == 0:
-                    row.configure(fg_color="#1a2a3a")
                 
                 data = [
                     str(idx),
@@ -275,8 +391,9 @@ class ExpensesFrame(ctk.CTkFrame):
                         text=d,
                         width=widths[i],
                         anchor="w",
-                        font=get_font(font_size)
-                    ).pack(side="left", padx=5)
+                        font=get_font(font_size),
+                        text_color="#ccddee"
+                    ).pack(side="left", padx=8, pady=6)
                 
                 # Actions
                 actions = ctk.CTkFrame(row, fg_color="transparent")
@@ -285,18 +402,25 @@ class ExpensesFrame(ctk.CTkFrame):
                 ctk.CTkButton(
                     actions,
                     text="✏️",
-                    width=30,
+                    width=32,
+                    height=32,
+                    corner_radius=8,
+                    fg_color="#2a4a6a",
+                    hover_color="#1a3a5a",
                     command=lambda e=expense: self.edit_expense(e)
                 ).pack(side="left", padx=2)
                 
                 ctk.CTkButton(
                     actions,
                     text="🗑️",
-                    width=30,
-                    fg_color="red",
-                    hover_color="darkred",
+                    width=32,
+                    height=32,
+                    corner_radius=8,
+                    fg_color="#6a2a2a",
+                    hover_color="#5a1a1a",
                     command=lambda e=expense: self.delete_expense(e)
                 ).pack(side="left", padx=2)
+                
             except Exception as e:
                 print(f"Error displaying expense {idx}: {e}")
     
@@ -322,7 +446,7 @@ class ExpensesFrame(ctk.CTkFrame):
         
         # Show "processing" message
         self.add_btn.configure(text="⏳ Processing...", state="disabled")
-        self.update_idletasks()  # Force UI update
+        self.update_idletasks()
         
         if self.editing_expense_id:
             success, msg = update_expense(self.editing_expense_id, name, amount, notes)
@@ -376,52 +500,51 @@ class ExpensesFrame(ctk.CTkFrame):
         self.notes_entry.delete(0, "end")
         self.notes_entry.insert(0, notes or "")
         
-        self.add_btn.configure(text="💾 Update Expense")
-        self.status_label.configure(text=f"Editing: {name} (ID: {exp_id})", text_color="blue")
+        self.add_btn.configure(text="💾 Update Expense", fg_color="#f39c12", hover_color="#d68910")
+        self.status_label.configure(text=f"✏️ Editing: {name}", text_color="blue")
         self.show_message(f"Editing expense: {name}. Make changes and click Update.", "blue")
     
     def delete_expense(self, expense):
         """Delete an expense with confirmation"""
         exp_id, name, amount, date, notes = expense
-        font_size = get_font_size()
         
         dialog = ctk.CTkToplevel(self)
         dialog.title("Confirm Delete")
-        dialog.geometry("350x180")
+        dialog.geometry("400x220")
         dialog.transient(self)
         dialog.grab_set()
         dialog.focus_force()
         dialog.lift()
         
         dialog.update_idletasks()
-        width = 350
-        height = 180
+        width = 400
+        height = 220
         x = (dialog.winfo_screenwidth() // 2) - (width // 2)
         y = (dialog.winfo_screenheight() // 2) - (height // 2)
         dialog.geometry(f'{width}x{height}+{x}+{y}')
         
         ctk.CTkLabel(
             dialog,
-            text=f"Delete Expense?",
-            font=get_font_bold(16),
+            text="🗑️ Delete Expense?",
+            font=get_font_bold(20),
             text_color="red"
-        ).pack(pady=10)
+        ).pack(pady=(20, 10))
         
         ctk.CTkLabel(
             dialog,
             text=f"Name: {name}\nAmount: UGX {amount:,.0f}",
-            font=get_font(font_size)
+            font=get_font(self.font_size + 2)
         ).pack(pady=5)
         
         ctk.CTkLabel(
             dialog,
             text="This action cannot be undone!",
             text_color="red",
-            font=get_font(font_size - 2)
+            font=get_font(self.font_size - 2)
         ).pack()
         
-        btn_frame = ctk.CTkFrame(dialog)
-        btn_frame.pack(pady=15)
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=20)
         
         def confirm():
             success, msg = delete_expense(exp_id)
@@ -442,14 +565,22 @@ class ExpensesFrame(ctk.CTkFrame):
             fg_color="red",
             hover_color="darkred",
             command=confirm,
-            width=100
+            width=120,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size)
         ).pack(side="left", padx=10)
         
         ctk.CTkButton(
             btn_frame,
             text="Cancel",
             command=dialog.destroy,
-            width=100
+            width=120,
+            height=40,
+            corner_radius=10,
+            font=get_font_bold(self.font_size),
+            fg_color="#555555",
+            hover_color="#444444"
         ).pack(side="left", padx=10)
     
     def clear_form(self):
@@ -458,7 +589,7 @@ class ExpensesFrame(ctk.CTkFrame):
         self.amount_entry.delete(0, "end")
         self.notes_entry.delete(0, "end")
         self.editing_expense_id = None
-        self.add_btn.configure(text="💸 Post Expense")
+        self.add_btn.configure(text="💸 Post Expense", fg_color="#2d8f47", hover_color="#1f6a33")
         self.status_label.configure(text="")
     
     def show_message(self, msg, color="green"):
@@ -470,18 +601,17 @@ class ExpensesFrame(ctk.CTkFrame):
         except:
             pass
         
-        font_size = get_font_size()
+        label = ctk.CTkLabel(
+            self.expenses_list,
+            text=msg,
+            text_color=color,
+            font=get_font_bold(self.font_size),
+            fg_color="#1a2a3a" if color == "green" else "#3a1a1a",
+            corner_radius=8,
+            padx=20,
+            pady=10
+        )
+        label.is_message = True
+        label.pack(pady=10, fill="x")
         
-        try:
-            label = ctk.CTkLabel(
-                self.expenses_list,
-                text=msg,
-                text_color=color,
-                font=get_font(font_size)
-            )
-            label.is_message = True
-            label.pack(pady=5)
-            
-            self.after(3000, lambda: label.destroy() if label.winfo_exists() else None)
-        except Exception as e:
-            print(f"Error showing message: {e}")
+        self.after(3000, lambda: label.destroy() if label.winfo_exists() else None)
